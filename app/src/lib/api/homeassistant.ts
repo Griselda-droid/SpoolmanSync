@@ -53,6 +53,7 @@ interface EntityRegistryEntry {
   platform: string;
   device_id: string | null;
   translation_key: string | null;
+  translation_placeholders: Record<string, string> | null;
   disabled_by: string | null;
   unique_id: string;
 }
@@ -1186,9 +1187,21 @@ export interface HAUser {
  * that don't set translation_key.
  */
 function getEffectiveTranslationKey(entity: EntityRegistryEntry): string | null {
-  if (entity.translation_key) return entity.translation_key;
+  if (entity.translation_key) {
+    // ha-bambulab v2.2.21+ uses translation_key="tray" with translation_placeholders
+    // instead of per-tray keys like "tray_1". Try placeholders first, then unique_id fallback.
+    if (entity.translation_key === 'tray') {
+      if (entity.translation_placeholders?.tray_number) {
+        return `tray_${entity.translation_placeholders.tray_number}`;
+      }
+      // Placeholders not in WS response — extract tray number from unique_id
+      const trayMatch = entity.unique_id.match(/_tray_(\d+)$/);
+      if (trayMatch) return `tray_${trayMatch[1]}`;
+    }
+    return entity.translation_key;
+  }
 
-  // Fallback: extract known key from unique_id suffix
+  // Fallback: extract known key from unique_id suffix (old ha-bambulab without translation_key)
   const knownKeys = [
     'print_status', 'print_weight', 'print_progress', 'print_length',
     'tray_1', 'tray_2', 'tray_3', 'tray_4',
