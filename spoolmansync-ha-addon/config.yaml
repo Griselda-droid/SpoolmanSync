@@ -1,5 +1,5 @@
 name: SpoolmanSync
-version: "1.4.2"
+version: "1.4.3"
 slug: spoolmansync-ha-addon
 description: Sync Bambu Lab AMS trays with Spoolman filament inventory
 url: https://github.com/gibz104/SpoolmanSync
