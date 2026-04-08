@@ -61,6 +61,7 @@ interface TraySlotProps {
   onAssign: (spoolId: number) => void;
   onUnassign?: (spoolId: number) => void;
   mismatch?: MismatchInfo;
+  showLocation?: boolean;
 }
 
 /**
@@ -101,7 +102,7 @@ function sortSpools(spools: Spool[], sortBy: SortBy): Spool[] {
   });
 }
 
-export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mismatch }: TraySlotProps) {
+export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mismatch, showLocation }: TraySlotProps) {
   const [open, setOpen] = useState(false);
   const [filters, setFilters] = useState<Record<string, string | null>>({});
   const [enabledFields, setEnabledFields] = useState<FilterField[]>([]);
@@ -233,6 +234,12 @@ export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mi
                   <span className="text-[9px] font-medium text-muted-foreground uppercase">Vendor:</span>
                   <span className="text-xs font-medium truncate">{assignedSpool.filament.vendor?.name || 'Unknown'}</span>
                 </div>
+                {showLocation && assignedSpool.location && (
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-[9px] font-medium text-muted-foreground uppercase">Location:</span>
+                    <span className="text-xs font-medium truncate">{assignedSpool.location}</span>
+                  </div>
+                )}
               </div>
 
               {/* Footer: spool ID and weight */}

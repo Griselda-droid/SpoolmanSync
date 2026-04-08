@@ -40,6 +40,7 @@ interface PrinterWithSpools extends HAPrinter {
 interface Settings {
   homeassistant: { url: string; connected: boolean } | null;
   spoolman: { url: string; connected: boolean } | null;
+  showSpoolLocation?: boolean;
 }
 
 export default function Dashboard() {
@@ -474,6 +475,7 @@ export default function Dashboard() {
                 spools={spools}
                 onSpoolAssign={handleSpoolAssign}
                 onSpoolUnassign={handleSpoolUnassign}
+                showSpoolLocation={settings?.showSpoolLocation}
               />
             ))}
           </div>

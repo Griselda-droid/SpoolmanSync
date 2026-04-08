@@ -78,6 +78,9 @@ function SettingsContent() {
   const [enabledFilters, setEnabledFilters] = useState<string[]>([]);
   const [savingFilters, setSavingFilters] = useState(false);
 
+  // Dashboard display settings
+  const [showSpoolLocation, setShowSpoolLocation] = useState(false);
+
   // QR base URL state
   const [qrBaseUrl, setQrBaseUrl] = useState('');
   const [savingQrUrl, setSavingQrUrl] = useState(false);
@@ -157,6 +160,9 @@ function SettingsContent() {
       }
       if (data.qrBaseUrl !== undefined) {
         setQrBaseUrl(data.qrBaseUrl);
+      }
+      if (data.showSpoolLocation !== undefined) {
+        setShowSpoolLocation(data.showSpoolLocation);
       }
     } catch {
       toast.error('Failed to load settings');
@@ -809,6 +815,53 @@ function SettingsContent() {
               </Button>
             </CardContent>
           </Card>
+
+          {/* Dashboard Display Settings */}
+          {settings?.spoolman && (
+            <>
+              <Separator />
+              <Card>
+                <CardHeader>
+                  <CardTitle>Dashboard Display</CardTitle>
+                  <CardDescription>
+                    Configure what information is shown on the dashboard spool cards.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="show-spool-location"
+                      checked={showSpoolLocation}
+                      onCheckedChange={async (checked) => {
+                        const enabled = checked === true;
+                        setShowSpoolLocation(enabled);
+                        try {
+                          const res = await fetch('/api/settings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ type: 'show_spool_location', enabled }),
+                          });
+                          if (!res.ok) throw new Error();
+                          toast.success(enabled ? 'Spool location enabled on dashboard' : 'Spool location hidden on dashboard');
+                        } catch {
+                          setShowSpoolLocation(!enabled);
+                          toast.error('Failed to save setting');
+                        }
+                      }}
+                    />
+                    <div>
+                      <Label htmlFor="show-spool-location" className="text-sm font-medium cursor-pointer">
+                        Show spool location
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        Display the Spoolman location field on each spool card (e.g., shelf, dry box, bin number)
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
 
           {/* Spool Filter Configuration */}
           {settings?.spoolman && (

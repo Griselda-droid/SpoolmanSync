@@ -42,9 +42,10 @@ interface PrinterCardProps {
   spools: Spool[];
   onSpoolAssign: (trayId: string, spoolId: number) => void;
   onSpoolUnassign: (spoolId: number) => void;
+  showSpoolLocation?: boolean;
 }
 
-export function PrinterCard({ printer, spools, onSpoolAssign, onSpoolUnassign }: PrinterCardProps) {
+export function PrinterCard({ printer, spools, onSpoolAssign, onSpoolUnassign, showSpoolLocation }: PrinterCardProps) {
   return (
     <Card className="w-full">
       <CardHeader className="pb-3">
@@ -69,6 +70,7 @@ export function PrinterCard({ printer, spools, onSpoolAssign, onSpoolUnassign }:
                   onAssign={(spoolId) => onSpoolAssign(tray.unique_id || tray.entity_id, spoolId)}
                   onUnassign={onSpoolUnassign}
                   mismatch={tray.mismatch}
+                  showLocation={showSpoolLocation}
                 />
               ))}
             </div>
@@ -92,6 +94,7 @@ export function PrinterCard({ printer, spools, onSpoolAssign, onSpoolUnassign }:
                     onSpoolAssign(extSpool.unique_id || extSpool.entity_id, spoolId);
                   }}
                   onUnassign={onSpoolUnassign}
+                  showLocation={showSpoolLocation}
                 />
               ))}
             </div>

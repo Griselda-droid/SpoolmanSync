@@ -45,8 +45,9 @@ export async function GET() {
         }
       }
 
-      // Fetch optional QR base URL override
+      // Fetch optional settings
       const qrBaseUrlSetting = await prisma.settings.findUnique({ where: { key: 'qr_base_url' } });
+      const showLocationSetting = await prisma.settings.findUnique({ where: { key: 'show_spool_location' } });
 
       return NextResponse.json({
         embeddedMode: false,
@@ -61,6 +62,7 @@ export async function GET() {
           connected: true,
         } : null,
         qrBaseUrl: qrBaseUrlSetting?.value || '',
+        showSpoolLocation: showLocationSetting?.value === 'true',
       });
     }
 
@@ -238,8 +240,9 @@ export async function GET() {
     }
     // else: null — HA hasn't been set up yet (first startup)
 
-    // Fetch optional QR base URL override
+    // Fetch optional settings
     const qrBaseUrlSetting = await prisma.settings.findUnique({ where: { key: 'qr_base_url' } });
+    const showLocationSetting = await prisma.settings.findUnique({ where: { key: 'show_spool_location' } });
 
     return NextResponse.json({
       embeddedMode,
@@ -250,6 +253,7 @@ export async function GET() {
         connected: true,
       } : null,
       qrBaseUrl: qrBaseUrlSetting?.value || '',
+      showSpoolLocation: showLocationSetting?.value === 'true',
     });
   } catch (error) {
     console.error('Error fetching settings:', error);
@@ -320,6 +324,16 @@ export async function POST(request: NextRequest) {
         message: 'Home Assistant reconnected with updated credentials',
       });
 
+      return NextResponse.json({ success: true });
+    }
+
+    if (type === 'show_spool_location') {
+      const enabled = body.enabled === true;
+      await prisma.settings.upsert({
+        where: { key: 'show_spool_location' },
+        create: { key: 'show_spool_location', value: String(enabled) },
+        update: { value: String(enabled) },
+      });
       return NextResponse.json({ success: true });
     }
 
