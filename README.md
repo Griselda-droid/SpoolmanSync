@@ -1,315 +1,108 @@
 # SpoolmanSync
 
-**The easiest way to sync Bambu Lab AMS filament with Spoolman**
+**Automatic filament tracking for Bambu Lab and Creality printers with Spoolman**
 
 ![Build Status](https://github.com/gibz104/SpoolmanSync/actions/workflows/docker-publish.yml/badge.svg)
 [![Ko-Fi](https://img.shields.io/badge/Ko--fi-Support%20this%20project-ff5f5f?logo=ko-fi)](https://ko-fi.com/gibz104)
 [![GitHub stars](https://img.shields.io/github/stars/gibz104/SpoolmanSync?style=social)](https://github.com/gibz104/SpoolmanSync)
 
-> **Tired of manually editing YAML files?** SpoolmanSync provides a modern web UI for Bambu Lab filament tracking with Spoolman - no Home Assistant expertise required.
+SpoolmanSync is a web app that automatically tracks which filament spools are loaded in your 3D printer's AMS/CFS and keeps [Spoolman](https://github.com/Donkie/Spoolman) inventory in sync — including weight deducted per print. Works with **Bambu Lab** (X1C, P1S, A1, H2D, AMS, AMS 2 Pro, AMS HT) and **Creality** (K1, K2, K2 Plus, Hi, Ender 3 V3 with CFS) printers, and supports filament from any vendor.
 
-SpoolmanSync automatically tracks which filament spools are loaded in your Bambu Lab printer's AMS units and syncs this information with [Spoolman](https://github.com/Donkie/Spoolman) for accurate filament inventory management. Works with **all filament brands** - not just Bambu Lab spools.
-
-## Why SpoolmanSync?
-
-| Feature | SpoolmanSync | Other Solutions |
-|---------|:------------:|:---------------:|
-| Web UI for spool assignment | ✅ | ❌ |
-| QR/Barcode scanning | ✅ | ❌ |
-| Printable QR code labels | ✅ | ❌ |
-| NFC tag writing | ✅ | ❌ |
-| Home Assistant add-on | ✅ | ❌ |
-| Bundled Home Assistant option | ✅ | ❌ |
-| No YAML editing required | ✅ | ❌ |
-| Multi-AMS support | ✅ | Limited |
-| Non-English Home Assistant support | ✅ | ❌ |
-| Works with ANY filament brand | ✅ | Partial |
-| Low stock alerts | ✅ | ❌ |
-| Automatic filament usage tracking | ✅ | ✅ |
+No YAML editing. No Home Assistant expertise required.
 
 ## Features
 
-- **Dashboard** - View all your printers, AMS units, and tray assignments at a glance
-- **Spool Assignment** - Click any tray to assign a spool from your Spoolman inventory
-- **QR Code Scanning** - Scan Spoolman QR codes or custom barcodes to quickly look up and assign spools
-- **QR Label Generation** - Create and print QR code labels for your spools. Scan with your phone camera to quickly assign to AMS trays
-- **NFC Tag Writing** - Write spool links to NFC sticker tags. Tap with your phone to assign spools (Android only: Chrome, Edge, Opera, Samsung Internet)
-- **Low Stock Alerts** - Get notified when you're down to your last spool of a filament type and it's running low. Sent as Home Assistant persistent notifications
-- **Kiosk Mode** - Touch-optimized interface for small screens with USB NFC/RFID readers (e.g., Raspberry Pi kiosk setups)
-- **AMS 2 Pro & AMS HT Support** - Works with all AMS hardware variants
-- **Bambu Cloud Login** - Add printers by logging in with your Bambu Cloud account
-- **Home Assistant Add-on** - Install directly from the HA add-on store with sidebar integration
-- **Bundled Home Assistant** - Includes a pre-configured Home Assistant with ha-bambulab integration
-- **Webhook Integration** - Receives tray change events from Home Assistant automations
-- **Activity Logging** - Track all spool changes and sync events
+- **Web dashboard** — view printers, AMS/CFS units, and tray assignments at a glance
+- **Click-to-assign** — pick spools from your Spoolman inventory with search and filters
+- **Multi-brand support** — Bambu Lab and Creality printers side-by-side on one dashboard
+- **Automatic usage tracking** — filament weight deducted from the correct spool when prints complete
+- **QR & NFC** — scan Spoolman QR codes, print your own QR labels, or write NFC stickers for instant assignment
+- **Low stock alerts** — Home Assistant notifications when you're down to your last spool of a type
+- **Multi-AMS / multi-CFS** — works with any combination of units per printer
+- **Localized Home Assistant** — supports non-English HA installations (German, Dutch, Spanish, Italian, etc.)
+- **Works with all filament brands** — Polymaker, Sunlu, Elegoo, Hatchbox, eSUN, generic, etc.
+- **Three install modes** — HA add-on, embedded (bundled HA), or connects to your existing HA
 
-## Home Assistant Add-on (Recommended for HA OS users)
+## Installation
 
-If you're running Home Assistant OS or Supervised, install SpoolmanSync directly as an add-on:
+Pick the option that matches your setup:
 
-1. Add this repository to your add-on store:
-   - Go to **Settings** → **Add-ons** → **Add-on Store**
-   - Click **⋮** (top right) → **Repositories**
-   - Add: `https://github.com/gibz104/SpoolmanSync`
-2. Find **SpoolmanSync** in the store and click **Install**
-3. Start the add-on and enable **Show in sidebar**
-4. Open SpoolmanSync from the sidebar — your printers are automatically discovered from ha-bambulab
-5. Configure your Spoolman URL in **Settings** (or in the add-on configuration tab)
-6. Go to **Automations** and click **Configure Automations**
+### Option 1: Home Assistant Add-on (recommended for HA OS / Supervised)
 
-**Port conflict?** The add-on uses port `3000` by default for direct access and QR/NFC scanning. If another add-on or service is already using port 3000, change it in the add-on's **Configuration** tab.
+1. **Settings → Add-ons → Add-on Store → ⋮ → Repositories**
+2. Add `https://github.com/gibz104/SpoolmanSync`
+3. Install **SpoolmanSync**, start it, and enable **Show in sidebar**
+4. Open from the sidebar and configure Spoolman URL in Settings
 
-**Requirements:** [ha-bambulab](https://github.com/greghesp/ha-bambulab) integration installed via [HACS](https://hacs.xyz/) and [Spoolman](https://github.com/Donkie/Spoolman) running and accessible from Home Assistant.
+Requires the [ha-bambulab](https://github.com/greghesp/ha-bambulab) integration (for Bambu Lab) or [ha_creality_ws](https://github.com/3dg1luk43/ha_creality_ws) (for Creality), both installable via [HACS](https://hacs.xyz/), plus [Spoolman](https://github.com/Donkie/Spoolman) running on your network.
 
----
+### Option 2: Embedded Mode (bundled Home Assistant)
 
-## Quick Install (Pre-built Images)
-
-The fastest way to get started with Docker using pre-built images:
+Best for users without Home Assistant. Includes a pre-configured HA with ha-bambulab and ha_creality_ws already installed.
 
 ```bash
-# Download the compose file
 curl -O https://raw.githubusercontent.com/gibz104/SpoolmanSync/main/docker-compose.prebuilt.yml
-
-# Start with embedded Home Assistant (recommended for most users)
 docker compose -f docker-compose.prebuilt.yml --profile embedded up -d
+```
 
-# Or, if you already have Home Assistant with ha-bambulab
+Open http://localhost:3000, then in **Settings** click **Add Printer** and choose your printer brand.
+
+### Option 3: External Mode (existing Home Assistant)
+
+For users who already run Home Assistant with ha-bambulab or ha_creality_ws installed.
+
+```bash
+curl -O https://raw.githubusercontent.com/gibz104/SpoolmanSync/main/docker-compose.prebuilt.yml
 docker compose -f docker-compose.prebuilt.yml --profile external up -d
 ```
 
-Then open http://localhost:3000 and follow the setup steps below.
+Open http://localhost:3000 and connect to your existing HA in **Settings**. Your printers will appear automatically on the dashboard.
 
----
+## Initial Setup
 
-## Building from Source
+After any install mode:
 
-If you prefer to build locally or want to contribute:
+1. **Connect Spoolman** — enter your Spoolman URL in **Settings**
+2. **Add printers** — in add-on or embedded mode, click **Add Printer** and pick Bambu Lab or Creality; in external mode printers are auto-discovered
+3. **Generate automations** — go to **Automations** and click **Configure Automations**. In add-on/embedded mode this is one click. In external mode you'll copy the generated YAML into your HA `configuration.yaml` and `automations.yaml`, restart HA, then click **Mark as Configured**
+4. **Assign spools** — click any tray on the dashboard to assign a spool from Spoolman
 
-### 1. Clone the Repository
-
-```bash
-git clone https://github.com/gibz104/SpoolmanSync.git
-cd SpoolmanSync
-```
-
-### 2. Choose Your Mode
-
-SpoolmanSync requires a Docker Compose profile. Choose based on your setup:
-
-| Mode | Command | Best For |
-|------|---------|----------|
-| **Add-on** | [See above](#home-assistant-add-on-recommended-for-ha-os-users) | HA OS / Supervised users |
-| **Embedded** | `docker compose --profile embedded up -d` | Most users - includes bundled Home Assistant |
-| **External** | `docker compose --profile external up -d` | Users who already have Home Assistant with ha-bambulab |
-
----
-
-## Embedded Mode Setup (Recommended)
-
-Use this if you don't have Home Assistant or want a simpler setup.
-
-### Step 1: Start the Application
-
-```bash
-docker compose --profile embedded up -d
-```
-
-### Step 2: Open the UI
-
-Go to http://localhost:3000 in your browser.
-
-### Step 3: Add Your Printer
-
-1. Go to **Settings** in the navigation
-2. Click **Add Printer**
-3. Log in with your Bambu Cloud email and password
-4. Enter the verification code sent to your email
-5. Select your printer from the list
-6. Click **Continue**
-
-https://github.com/user-attachments/assets/51e006da-cdae-4db8-b261-bd622802ff62
-
-### Step 4: Connect Spoolman
-
-1. In **Settings**, scroll to the Spoolman section
-2. Enter your Spoolman URL (e.g., `http://127.0.0.1:7912`)
-3. Click **Connect**
-
-https://github.com/user-attachments/assets/47153c92-0a99-4749-8519-a24f1baad8a6
-
-### Step 5: Set Up Automations
-
-This enables automatic tray change detection.
-
-1. Go to **Automations** in the navigation
-2. Click **Configure Automations**
-3. The automations are automatically created in the embedded Home Assistant
-
-https://github.com/user-attachments/assets/4019ee5d-b2bb-4ae9-9c52-f581ec43f8c5
-
-### You're Done!
-
-Your dashboard should now show your printer with AMS trays. Click any tray to assign a spool from your Spoolman inventory.
-
----
-
-## External Mode Setup
-
-Use this if you already have Home Assistant with [ha-bambulab](https://github.com/greghesp/ha-bambulab) configured.
-
-### Step 1: Start the Application
-
-```bash
-docker compose --profile external up -d
-```
-
-### Step 2: Open the UI
-
-Go to http://localhost:3000 in your browser.
-
-### Step 3: Connect Home Assistant
-
-1. Go to **Settings** in the navigation
-2. Enter your Home Assistant URL (e.g., `http://127.0.0.1:8123`)
-3. Click **Connect with Home Assistant**
-4. You'll be redirected to Home Assistant to authorize SpoolmanSync
-5. Enter you Home Assistant credentials and click "Log in"
-
-https://github.com/user-attachments/assets/1f711fd2-28cd-41b5-8a41-06e991baec83
-
-Your printers should automatically appear on the dashboard (discovered from ha-bambulab).
-
-### Step 4: Connect Spoolman
-
-1. In **Settings**, scroll to the Spoolman section
-2. Enter your Spoolman URL (e.g., `http://127.0.0.1:7912`)
-3. Click **Connect**
-
-https://github.com/user-attachments/assets/915a321a-a6a8-4f81-85ae-5e7f6121f536
-
-### Step 5: Set Up Automations
-
-This enables automatic spool tracking and filament usage monitoring.
-
-1. Go to **Automations** in the navigation
-2. Enter the **SpoolmanSync URL** - the address where Home Assistant can reach SpoolmanSync (e.g., `http://192.168.1.100:3000`). Use your machine's IP address, not `localhost`, if Home Assistant is on a different machine.
-3. Click **Generate Configuration**
-4. You'll see two YAML configurations:
-   - **configuration.yaml** - Copy and add to your Home Assistant's `configuration.yaml`
-   - **automations.yaml** - Copy and add to your Home Assistant's `automations.yaml`
-5. Restart Home Assistant
-6. Return to SpoolmanSync and click **Mark as Configured**
-
-https://github.com/user-attachments/assets/06f0c220-e30a-4d19-9960-d8d6c10ae257
-
-### You're Done!
-
-Your dashboard should now show your printers with AMS trays. Click any tray to assign a spool from your Spoolman inventory.
-
----
-
-## Stopping and Restarting
-
-Always use the same profile you used to start:
-
-```bash
-# Embedded mode
-docker compose --profile embedded down      # Stop
-docker compose --profile embedded up -d     # Start
-
-# External mode
-docker compose --profile external down      # Stop
-docker compose --profile external up -d     # Start
-```
-
----
+That's it. When prints complete, filament weight is automatically deducted from the assigned spool.
 
 ## How It Works
 
-1. **Discovery**: SpoolmanSync connects to Home Assistant and discovers Bambu Lab printers via the ha-bambulab integration entities.
+SpoolmanSync discovers your printers and their AMS/CFS trays from Home Assistant (via ha-bambulab or ha_creality_ws). When you assign a spool to a tray, the assignment is stored in Spoolman's `extra.active_tray` field. Home Assistant automations send webhook events on tray changes and print completion, and SpoolmanSync deducts filament weight from the correct spool in Spoolman.
 
-2. **Manual Assignment**: Users can manually assign spools to trays via the dashboard or by scanning QR codes.
-
-3. **Automatic Sync**: When Home Assistant automations detect tray changes, they call the SpoolmanSync webhook with tray information (color, material, tag UID). SpoolmanSync matches this to spools in Spoolman and updates the `active_tray` extra field.
-
-4. **Spoolman Integration**: All spool assignments are stored in Spoolman's `extra` field as `active_tray`, making it compatible with other Spoolman integrations.
-
----
+Spool matching works in three ways:
+- **Manual assignment** (all vendors) — click a tray, pick a spool
+- **RFID auto-match** (Bambu spools with tags, Creality CFS spools with RFID) — remembers which physical spool is which for future swaps
+- **QR code / NFC** (any vendor) — scan printed QR labels or NFC stickers with your phone to assign
 
 ## Low Stock Alerts
 
-SpoolmanSync can notify you when you're running low on a particular filament and need to reorder. Alerts are sent as Home Assistant persistent notifications.
+Get notified via Home Assistant when you're down to your last spool of a filament type and it's running low. Configure in **Settings → Low Filament Alerts**:
+- Threshold type (percentage or grams)
+- Grouping (by material, material+name, or material+name+vendor)
+- Selective monitoring — track only the groups you care about
 
-**How it works:** An alert fires when you're down to your **last spool** of a filament group and that spool drops below your configured threshold. If you have 5 spools of black PETG and 4 are empty, no alert — you still have one good spool. Once that last spool drops below the threshold, you get notified.
-
-Configure alerts in **Settings** → **Low Filament Alerts**:
-
-- **Threshold type** — Percentage remaining or absolute weight (grams)
-- **Grouping strategy** — How spools are grouped to determine "last spool":
-  - **Material** — All PLA spools are one group, all PETG another
-  - **Material + Name** — Groups by filament product (e.g., "HF Black PETG" and "HF Blue PETG" are separate)
-  - **Material + Name + Vendor** — Same as above but distinguishes between vendors
-- **Selective monitoring** — Optionally monitor only specific groups instead of your entire inventory
-
----
-
-## Kiosk Mode
-
-SpoolmanSync includes an optional kiosk mode for users who want a dedicated spool-scanning station — for example, a Raspberry Pi with a small touchscreen and USB NFC reader mounted next to their printer.
-
-Navigate to `/kiosk` and click **Enable Kiosk Mode**. This sets a browser cookie that switches the spool assignment page to a touch-optimized layout with large tray buttons. Only the browser where you enable it is affected — all other devices see the normal UI. You can exit kiosk mode at any time via the link at the bottom of the screen.
-
----
+Alerts fire only when you're on your *last* spool of a group — no noise from partially-used spools when you have backups.
 
 ## Troubleshooting
 
-### "No service selected" when running docker compose
+**No printers showing up** — verify ha-bambulab or ha_creality_ws is installed in HA and your printers appear in the HA entity registry. Check the Logs page in SpoolmanSync.
 
-You must specify a profile:
-```bash
-docker compose --profile embedded up -d
-# or
-docker compose --profile external up -d
-```
+**Webhooks not working** — make sure you clicked **Mark as Configured** after adding automations (external mode), and that HA can reach SpoolmanSync at the URL you entered. Use your machine's IP, not `localhost`, if HA is on a different machine.
 
-### No printers found
+**QR scanner or NFC not working** — browsers require HTTPS for camera and NFC access from non-`localhost` addresses. Use a reverse proxy, Tailscale, or access via `http://localhost:3000` on the same machine. Web NFC is Android-only (Chrome, Edge, Opera, Samsung Internet).
 
-**Embedded mode:**
-- Make sure you've added a printer via the **Add Printer** button
-- Check that your Bambu Cloud credentials are correct
+**Creality filament weight looks wrong** — ha_creality_ws reports filament usage in length (cm), which SpoolmanSync converts to weight using material density (PLA 1.24 g/cm³, PETG 1.27, ABS 1.04, etc., 1.75mm default diameter). For most common materials the conversion is accurate; exotic filaments may vary slightly.
 
-**External mode:**
-- Ensure ha-bambulab integration is installed and configured in your Home Assistant
-- Verify your Home Assistant URL is correct and you authorized SpoolmanSync
-- Check the Logs page for error messages
+## Links
 
-### Webhook not working
-- Verify the automations were added to Home Assistant
-- Make sure you clicked **Mark as Configured** after adding the automations
-- Check that the SpoolmanSync URL you entered is reachable from Home Assistant (use your machine's IP address, not `localhost`)
-- Check that SpoolmanSync is accessible from Home Assistant's network
-
-### QR scanner not working
-- **HTTPS required for remote access**: Browsers block camera access on insecure HTTP connections. If you're accessing SpoolmanSync from a different device (not `localhost`), you'll need to set up HTTPS (e.g., via a reverse proxy or [Tailscale](https://tailscale.com/kb/1153/enabling-https))
-- Ensure you've granted camera permissions in your browser
-- Try using a different camera if available
-- Use manual search as a fallback
-
-### NFC tag writing not working
-- **HTTPS required**: Web NFC requires a secure context. If you're not on `localhost`, you'll need HTTPS (e.g., via a reverse proxy or [Tailscale](https://tailscale.com/kb/1153/enabling-https))
-- **Android only**: Web NFC is only supported on Android devices with Chrome, Edge, Opera, or Samsung Internet browsers
-- **Not supported**: iOS (any browser), Firefox, and Brave do not support Web NFC
-- If NFC is unavailable, SpoolmanSync shows a URL template you can use with a dedicated NFC writing app
-- Make sure NFC is enabled in your device settings
-- Use NTAG213, NTAG215, or NTAG216 NFC sticker tags
-
----
+- [GitHub Issues](https://github.com/gibz104/SpoolmanSync/issues)
+- [Home Assistant Community post](https://community.home-assistant.io/t/spoolmansync-automatic-filament-tracking-for-bambu-lab-printers-beginner-friendly/977383)
+- [Docker Hub](https://hub.docker.com/r/gibz104/spoolmansync)
 
 ## License
 
-MIT License - see [LICENSE.txt](LICENSE.txt)
-
-## Contributing
-
-Contributions are welcome! Please open an issue or pull request.
+MIT — see [LICENSE.txt](LICENSE.txt)

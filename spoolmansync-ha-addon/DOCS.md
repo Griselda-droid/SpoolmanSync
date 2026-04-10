@@ -1,6 +1,6 @@
 # SpoolmanSync Add-on
 
-Sync Bambu Lab AMS trays with Spoolman filament inventory via Home Assistant.
+Automatic filament tracking for Bambu Lab and Creality printers with Spoolman.
 
 ## Installation
 
@@ -23,7 +23,8 @@ You can also configure the Spoolman URL from the SpoolmanSync Settings page afte
 ## Requirements
 
 - **Spoolman** running and accessible from Home Assistant
-- **ha-bambulab** integration installed via [HACS](https://hacs.xyz/)
+- For Bambu Lab printers: **ha-bambulab** integration installed via [HACS](https://hacs.xyz/)
+- For Creality printers: **ha_creality_ws** integration installed via [HACS](https://hacs.xyz/)
 
 ## Full Documentation
 

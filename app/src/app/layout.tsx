@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "SpoolmanSync",
-  description: "Sync Bambu Lab AMS trays with Spoolman via Home Assistant",
+  description: "Automatic filament tracking for Bambu Lab and Creality printers with Spoolman",
 };
 
 export default async function RootLayout({

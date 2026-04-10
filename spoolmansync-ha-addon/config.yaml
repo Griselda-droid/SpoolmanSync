@@ -1,7 +1,7 @@
 name: SpoolmanSync
 version: "1.4.3"
 slug: spoolmansync-ha-addon
-description: Sync Bambu Lab AMS trays with Spoolman filament inventory
+description: Automatic filament tracking for Bambu Lab and Creality printers with Spoolman
 url: https://github.com/gibz104/SpoolmanSync
 image: ghcr.io/gibz104/spoolmansync-addon
 arch:
