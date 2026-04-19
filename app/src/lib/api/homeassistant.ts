@@ -69,6 +69,7 @@ interface DeviceRegistryEntry {
   manufacturer: string | null;
   model: string | null;
   name: string | null;
+  name_by_user: string | null;
 }
 
 export interface HATray {
@@ -780,7 +781,7 @@ export class HomeAssistantClient {
         .replace(/_print_status$/, '')
         .toLowerCase();
 
-      const name = printerDevice?.name || prefix;
+      const name = printerDevice?.name_by_user || printerDevice?.name || prefix;
 
       // Find child devices (AMS units, external spools) via device hierarchy
       const childDevices = devices.filter(d => d.via_device_id === bestPrinterEntity.device_id);
@@ -950,7 +951,7 @@ export class HomeAssistantClient {
         .replace(/^sensor\./, '')
         .replace(/_print_status$/, '');
 
-      const name = printerDevice?.name || prefix;
+      const name = printerDevice?.name_by_user || printerDevice?.name || prefix;
 
       // Gather all entities for this printer — include device entities and child device entities
       const allPrinterEntities: EntityRegistryEntry[] = [
