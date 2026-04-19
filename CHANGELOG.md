@@ -5,6 +5,11 @@ All notable changes to SpoolmanSync will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.2] - 2026-04-18
+
+### Fixed
+- Ingress port conflict with other add-ons when using host networking (#63). The add-on now uses dynamic port assignment from HA Supervisor instead of hardcoded port 8099.
+
 ## [1.5.1] - 2026-04-12
 
 ### Fixed
