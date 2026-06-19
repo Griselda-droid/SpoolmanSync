@@ -5,6 +5,13 @@ All notable changes to SpoolmanSync will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.1] - 2026-06-19
+
+> Upgrade note: re-run **Auto-configure** (regenerate and re-apply the automations) and restart Home Assistant to pick up the updated tray trigger.
+
+### Fixed
+- Filament usage could be badly under-counted when the printer or MQTT connection briefly flickered mid-print (#69). A transient `unavailable` blip on the active-tray sensor was treated as a tray change by the Update Spool automation, which reset the usage meter and discarded the filament tracked so far (e.g. 2.3 g logged for a 25.6 g print). The tray trigger now ignores `unavailable`/`unknown` transitions on both Bambu and Creality printers.
+
 ## [1.6.0] - 2026-06-19
 
 > Upgrade note: to apply the power-on and tray-clear fixes (#66, #65) and enable webhook authentication, re-run **Auto-configure** (regenerate and re-apply the automations) and restart Home Assistant. The other changes take effect on update alone.
