@@ -167,10 +167,17 @@ export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mi
   // Only show weight if spool is assigned and weight is a valid positive number
   const showWeight = assignedSpool && typeof displayWeight === 'number' && displayWeight >= 0;
 
-  const handleUnassign = (e: React.MouseEvent) => {
+  const handleUnassign = (e: React.MouseEvent | React.KeyboardEvent) => {
     e.stopPropagation(); // Prevent opening the dialog
     if (assignedSpool && onUnassign) {
       onUnassign(assignedSpool.id);
+    }
+  };
+
+  const handleUnassignKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleUnassign(e);
     }
   };
 
@@ -181,24 +188,16 @@ export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mi
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
+      <div className="relative">
       <DialogTrigger asChild>
         <button
           className="relative flex w-full flex-col rounded-lg border-2 border-border p-3 transition-colors hover:border-primary hover:bg-accent text-left min-h-[120px] md:min-h-[140px]"
         >
-          {/* Header row with tray label and unassign button */}
+          {/* Header row with tray label (unassign control is an overlay sibling) */}
           <div className="flex items-center justify-between w-full mb-2">
             <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
               {trayLabel}
             </span>
-            {assignedSpool && onUnassign && (
-              <span
-                onClick={handleUnassign}
-                className="h-5 w-5 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer text-xs"
-                title="Unassign spool"
-              >
-                ✕
-              </span>
-            )}
           </div>
 
           {/* Mismatch warning banner */}
@@ -270,6 +269,23 @@ export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mi
           )}
         </button>
       </DialogTrigger>
+      {/* Unassign control — a separately-focusable overlay rendered as a
+          sibling of the trigger button (not nested inside it, which would be
+          invalid DOM). Keyboard-accessible via role/tabIndex/onKeyDown. */}
+      {assignedSpool && onUnassign && (
+        <span
+          role="button"
+          tabIndex={0}
+          aria-label="Unassign spool"
+          onClick={handleUnassign}
+          onKeyDown={handleUnassignKeyDown}
+          className="absolute top-3 right-3 z-10 h-5 w-5 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors cursor-pointer text-xs"
+          title="Unassign spool"
+        >
+          ✕
+        </span>
+      )}
+      </div>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>

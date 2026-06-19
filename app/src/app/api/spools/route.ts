@@ -30,6 +30,14 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { spoolId, trayId } = body;
 
+    // Validate inputs before touching Spoolman to avoid malformed requests / 500s
+    if (typeof spoolId !== 'number' || !Number.isFinite(spoolId)) {
+      return NextResponse.json({ error: 'spoolId is required and must be a number' }, { status: 400 });
+    }
+    if (typeof trayId !== 'string' || trayId.trim() === '') {
+      return NextResponse.json({ error: 'trayId is required and must be a non-empty string' }, { status: 400 });
+    }
+
     const spoolmanConnection = await prisma.spoolmanConnection.findFirst();
 
     if (!spoolmanConnection) {
@@ -71,6 +79,11 @@ export async function DELETE(request: NextRequest) {
   try {
     const body = await request.json();
     const { spoolId } = body;
+
+    // Validate inputs before touching Spoolman to avoid malformed requests / 500s
+    if (typeof spoolId !== 'number' || !Number.isFinite(spoolId)) {
+      return NextResponse.json({ error: 'spoolId is required and must be a number' }, { status: 400 });
+    }
 
     const spoolmanConnection = await prisma.spoolmanConnection.findFirst();
 
