@@ -5,6 +5,27 @@ All notable changes to SpoolmanSync will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-06-19
+
+> Upgrade note: to apply the power-on and tray-clear fixes (#66, #65) and enable webhook authentication, re-run **Auto-configure** (regenerate and re-apply the automations) and restart Home Assistant. The other changes take effect on update alone.
+
+### Added
+- **Virtual printers** for dry boxes, filament dryers, and shelves (#67). Create them in Settings with assignable slots; they appear on the dashboard and support QR/NFC assignment like real trays, but are excluded from usage tracking. Deleting a printer or slot clears any spool assigned to it.
+- **Single-spool / non-AMS printer support** (#68). Printers without an AMS/CFS (e.g. Ender 3 V3 KE) now get an assignable external-spool slot so their filament can be tracked.
+- **Edit or delete usage events** from the Logs page to correct statistics (#54). By default this only adjusts SpoolmanSync's statistics; an opt-in option also adjusts the spool's remaining weight in Spoolman.
+- **Webhook authentication**: the Home Assistant webhook can require a generated shared-secret token, injected into the automations, preventing unauthenticated inventory changes from other devices on the network.
+- **"Never auto-clear tray assignments"** setting for setups with flaky AMS reporting (#65).
+- Unit test suite (Vitest) covering the filament-tracking logic.
+
+### Fixed
+- Filament usage is no longer deducted a second time when a printer is powered back on (#66). The print-completion automation now ignores the printer's offline state, and the usage meter resets when the printer goes offline.
+- Spool assignments are no longer cleared when the AMS briefly reports a tray as empty/unavailable during a reconnect (#65). The webhook ignores transient states and re-checks the live tray state before unassigning.
+- Usage-by-spool report no longer shows the same used weight for different spools that share a vendor and color (#64). Spool labels now include the Spoolman id to distinguish identical filaments.
+- The "Print Jobs" statistic counted every deduction event rather than prints; it is relabeled "Usage Events" to match the underlying data (#54).
+- Live updates now fall back to polling if the event stream drops after connecting; plus assorted resource-leak, race-condition, and component-lifecycle fixes.
+- Home Assistant token refresh now persists rotated refresh tokens and refreshes shortly before expiry.
+- The Home Assistant admin password is no longer returned by the settings API on every load; it is revealed only on explicit request.
+
 ## [1.5.3] - 2026-04-19
 
 ### Fixed
