@@ -5,6 +5,8 @@ import { HomeAssistantClient } from '@/lib/api/homeassistant';
 import { spoolEvents, SPOOL_UPDATED, SpoolUpdateEvent } from '@/lib/events';
 import { createActivityLog } from '@/lib/activity-log';
 import { checkAndUpdateAlerts } from '@/lib/alerts';
+import { getWebhookSecret, isWebhookAuthEnabled, tokensMatch, WEBHOOK_TOKEN_HEADER } from '@/lib/webhook-secret';
+import { isValidTrayUuid, lengthToWeight, classifyTrayState } from '@/lib/webhook-helpers';
 
 /**
  * Webhook endpoint for Home Assistant automations
@@ -22,47 +24,23 @@ import { checkAndUpdateAlerts } from '@/lib/alerts';
  * }
  */
 
-/** Returns true if tray_uuid/rfid is a real spool identifier (not empty, unknown, or all zeros) */
-function isValidTrayUuid(tray_uuid: string | undefined | null): boolean {
-  if (!tray_uuid || tray_uuid === 'unknown' || tray_uuid === '') return false;
-  // ha-bambulab reports all zeros for non-Bambu spools without RFID tags
-  if (tray_uuid.replace(/0/g, '') === '') return false;
-  return true;
-}
-
-/**
- * Material density lookup (g/cm³) for converting filament length to weight.
- * Used when Creality printers report usage in cm instead of grams.
- * Standard filament diameter: 1.75mm
- */
-const MATERIAL_DENSITY: Record<string, number> = {
-  PLA: 1.24,
-  'PLA+': 1.24,
-  PETG: 1.27,
-  ABS: 1.04,
-  ASA: 1.07,
-  TPU: 1.21,
-  PC: 1.20,
-  PA: 1.14,    // Nylon
-  'PA-CF': 1.35,
-  'PA-GF': 1.36,
-  PVA: 1.23,
-  HIPS: 1.04,
-};
-
-/**
- * Convert filament length (cm) to weight (grams).
- * Uses filament diameter of 1.75mm and material-specific density.
- */
-function lengthToWeight(lengthCm: number, material?: string): number {
-  const radiusCm = 0.0875; // 1.75mm / 2, converted to cm
-  const volumeCm3 = Math.PI * radiusCm * radiusCm * lengthCm;
-  const density = (material && MATERIAL_DENSITY[material.toUpperCase()]) || MATERIAL_DENSITY.PLA;
-  return volumeCm3 * density;
-}
-
 export async function POST(request: NextRequest) {
   try {
+    // Webhook authentication: only enforce once token-carrying automations have
+    // actually been applied (see isWebhookAuthEnabled). This prevents previewing
+    // automations from prematurely rejecting still-deployed tokenless ones, which
+    // would silently halt deductions. Fail open if the flag is set but no secret
+    // exists (an inconsistent state) rather than blocking legitimate usage.
+    if (await isWebhookAuthEnabled()) {
+      const configuredSecret = await getWebhookSecret();
+      if (configuredSecret) {
+        const provided = request.headers.get(WEBHOOK_TOKEN_HEADER);
+        if (!tokensMatch(provided, configuredSecret)) {
+          return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+      }
+    }
+
     const body = await request.json();
     const { event } = body;
 
@@ -152,6 +130,14 @@ export async function POST(request: NextRequest) {
         }
       }
 
+      // NOTE: We intentionally do NOT dedup spool_usage events here. A single
+      // print legitimately produces many small same-tray deductions (e.g. a
+      // dual-nozzle/multi-material print emits a run of ~0.6g increments as the
+      // active tray sensor recomputes — see issue #54), so any "same spool + tray
+      // + weight within N seconds" guard would silently drop real usage and
+      // under-count. Power-on re-deduction (issue #66) is instead prevented at the
+      // source: the automation's offline-state exclusion + meter-reset-on-offline.
+
       // Deduct the used weight from the spool
       await client.useWeight(matchedSpool.id, weightToDeduct);
 
@@ -236,12 +222,69 @@ export async function POST(request: NextRequest) {
       // Resolve entity_id to unique_id for matching and assignment
       const trayUniqueId = await resolveToUniqueId(tray_entity_id);
 
-      // Check if tray is now empty (no filament, or explicitly "Empty")
-      // ha-bambulab reports name="Empty" when tray has no filament
-      // ha_creality_ws reports empty string or no name when slot is empty
-      const trayIsEmpty = !name || name.toLowerCase() === 'empty' || name === '' || name === 'unavailable';
+      // Classify the reported tray state (issue #65) — see classifyTrayState.
+      const trayState = classifyTrayState(name);
 
-      if (trayIsEmpty) {
+      if (trayState === 'transient') {
+        await createActivityLog({
+          type: 'tray_change_ignored',
+          message: `Ignored transient tray state for ${tray_entity_id} (name="${name}") — assignment preserved`,
+          details: { trayId: tray_entity_id, reason: 'transient_state', name },
+        });
+        return NextResponse.json({ status: 'ignored', reason: 'transient_state' });
+      }
+
+      if (trayState === 'empty') {
+        // Opt-out: users with flaky AMS reporting can disable auto-clear entirely.
+        const neverClearSetting = await prisma.settings.findUnique({ where: { key: 'never_auto_clear_tray' } });
+        if (neverClearSetting?.value === 'true') {
+          await createActivityLog({
+            type: 'tray_empty_detected',
+            message: `Detected empty tray ${tray_entity_id} but auto-clear is disabled — assignment preserved`,
+            details: { trayId: tray_entity_id, reason: 'auto_clear_disabled' },
+          });
+          return NextResponse.json({ status: 'ignored', reason: 'auto_clear_disabled' });
+        }
+
+        // Defense-in-depth: re-query the live HA state before unassigning. A 4-5s
+        // empty flicker (issue #65) will already have reverted to filament by the
+        // time we process this event, so we can detect and ignore it. Fail safe:
+        // if HA can't confirm the tray is truly empty, preserve the assignment.
+        try {
+          const haClient = await HomeAssistantClient.fromConnection();
+          if (haClient) {
+            const live = await haClient.getState(tray_entity_id);
+            const liveName = (live?.attributes?.name ?? '').toString();
+            const liveNameLower = liveName.toLowerCase();
+            const liveState = (live?.state ?? '').toString().toLowerCase();
+            const stillEmpty = (liveNameLower === 'empty' || liveName === '')
+              && liveState !== 'unavailable' && liveState !== 'unknown';
+            if (!stillEmpty) {
+              await createActivityLog({
+                type: 'tray_change_ignored',
+                message: `Tray ${tray_entity_id} reported empty but live state no longer empty — assignment preserved`,
+                details: { trayId: tray_entity_id, reason: 'tray_no_longer_empty', liveName, liveState },
+              });
+              return NextResponse.json({ status: 'ignored', reason: 'tray_no_longer_empty' });
+            }
+          } else {
+            await createActivityLog({
+              type: 'tray_change_ignored',
+              message: `Could not confirm empty state for ${tray_entity_id} (HA not connected) — assignment preserved`,
+              details: { trayId: tray_entity_id, reason: 'ha_unavailable' },
+            });
+            return NextResponse.json({ status: 'ignored', reason: 'ha_unavailable' });
+          }
+        } catch (err) {
+          console.warn('Could not re-query live HA state before unassign; preserving assignment:', err);
+          await createActivityLog({
+            type: 'tray_change_ignored',
+            message: `Could not confirm empty state for ${tray_entity_id} (HA unreachable) — assignment preserved`,
+            details: { trayId: tray_entity_id, reason: 'ha_unreachable' },
+          });
+          return NextResponse.json({ status: 'ignored', reason: 'ha_unreachable' });
+        }
+
         // Auto-unassign any spool currently assigned to this tray
         const jsonTrayId = JSON.stringify(trayUniqueId);
         let assignedSpool = spools.find(s => s.extra?.['active_tray'] === jsonTrayId);

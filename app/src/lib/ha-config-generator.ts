@@ -43,7 +43,8 @@ interface PrinterConfig {
 export function generateHAConfig(
   printers: HAPrinter[],
   webhookUrl: string,
-  spoolmanUrl: string
+  spoolmanUrl: string,
+  webhookSecret: string = ''
 ): GeneratedConfig {
   if (printers.length === 0) {
     return {
@@ -123,7 +124,7 @@ export function generateHAConfig(
   }
 
   const automationsYaml = automationsYamlParts.join('\n');
-  const configurationAdditions = generateConfigurationAdditions(printerConfigs, spoolmanUrl);
+  const configurationAdditions = generateConfigurationAdditions(printerConfigs, spoolmanUrl, webhookSecret);
 
   return {
     automationsYaml,
@@ -237,6 +238,11 @@ function generateAutomationsYaml(
         - idle
       id: print_end
       trigger: state
+    - entity_id: ${entities.current_stage}
+      to:
+        - offline
+      id: offline
+      trigger: state
   variables:
     # For tray trigger: get the old tray composite ID (what we're switching FROM)
     old_tray: |-
@@ -344,7 +350,7 @@ function generateAutomationsYaml(
               value_template: >-
                 {{ trigger.id == 'print_end'
                    and trigger.from_state is not none
-                   and trigger.from_state.state not in ['unavailable', 'unknown', 'idle', 'finished'] }}
+                   and trigger.from_state.state not in ['unavailable', 'unknown', 'idle', 'finished', 'offline', 'off', 'none'] }}
           sequence:
             - choose:
                 - conditions:
@@ -384,6 +390,23 @@ function generateAutomationsYaml(
             - action: system_log.write
               data:
                 message: "SPOOLMANSYNC METER RESET after print end"
+                level: info
+
+        # =====================================================================
+        # PRINTER OFFLINE - Reset meter so no phantom weight survives power-off
+        # =====================================================================
+        - conditions:
+            - condition: template
+              value_template: "{{ trigger.id == 'offline' }}"
+          sequence:
+            - action: utility_meter.calibrate
+              target:
+                entity_id: sensor.spoolmansync_${prefix}_filament_usage_meter
+              data:
+                value: "0"
+            - action: system_log.write
+              data:
+                message: "SPOOLMANSYNC METER RESET (printer offline) | ${prefix}"
                 level: info
   mode: single
 
@@ -480,6 +503,12 @@ function generateCrealityAutomationsYaml(
         - idle
       id: print_end
       trigger: state
+    - entity_id: ${entities.current_stage}
+      to:
+        - 'off'
+        - offline
+      id: offline
+      trigger: state
   variables:
     old_tray: |-
       {% if trigger.id == 'tray' and trigger.from_state is not none and trigger.from_state.state not in [None, '', 'unknown', 'unavailable'] %}
@@ -574,7 +603,7 @@ function generateCrealityAutomationsYaml(
               value_template: >-
                 {{ trigger.id == 'print_end'
                    and trigger.from_state is not none
-                   and trigger.from_state.state not in ['unavailable', 'unknown', 'idle', 'completed', 'off'] }}
+                   and trigger.from_state.state not in ['unavailable', 'unknown', 'idle', 'completed', 'off', 'offline', 'none'] }}
           sequence:
             - choose:
                 - conditions:
@@ -613,6 +642,23 @@ function generateCrealityAutomationsYaml(
             - action: system_log.write
               data:
                 message: "SPOOLMANSYNC METER RESET after print end (Creality)"
+                level: info
+
+        # =====================================================================
+        # PRINTER OFFLINE - Reset meter so no phantom weight survives power-off
+        # =====================================================================
+        - conditions:
+            - condition: template
+              value_template: "{{ trigger.id == 'offline' }}"
+          sequence:
+            - action: utility_meter.calibrate
+              target:
+                entity_id: sensor.spoolmansync_${prefix}_filament_usage_meter
+              data:
+                value: "0"
+            - action: system_log.write
+              data:
+                message: "SPOOLMANSYNC METER RESET (printer offline) | ${prefix}"
                 level: info
   mode: single
 
@@ -722,8 +768,10 @@ function buildActiveTrayDetection(allTrays: TrayInfo[], brand: 'bambu_lab' | 'cr
  */
 function generateConfigurationAdditions(
   printerConfigs: PrinterConfig[],
-  spoolmanUrl: string
+  spoolmanUrl: string,
+  webhookSecret: string = ''
 ): string {
+  const secretHeader = webhookSecret ? `\n      X-SpoolmanSync-Token: "${webhookSecret}"` : '';
   const printerList = printerConfigs.map(p => p.prefix).join(', ');
   const totalTrays = printerConfigs.reduce((sum, p) => sum + p.allTrays.length, 0);
 
@@ -814,7 +862,7 @@ rest_command:
     url: "${spoolmanUrl}"
     method: POST
     headers:
-      Content-Type: "application/json"
+      Content-Type: "application/json"${secretHeader}
     payload: >
       {
         "event": "spool_usage",
@@ -831,7 +879,7 @@ rest_command:
     url: "${spoolmanUrl}"
     method: POST
     headers:
-      Content-Type: "application/json"
+      Content-Type: "application/json"${secretHeader}
     payload: >
       {
         "event": "tray_change",

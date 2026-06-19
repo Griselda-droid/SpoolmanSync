@@ -8,6 +8,7 @@ import {
 } from '@/lib/ha-config-generator';
 import { createActivityLog } from '@/lib/activity-log';
 import { getHiddenPrinters } from '@/app/api/printers/setup/route';
+import { getOrCreateWebhookSecret, enableWebhookAuth } from '@/lib/webhook-secret';
 import * as fs from 'fs/promises';
 
 
@@ -65,8 +66,10 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
 
-      // Use the same config generator as embedded mode for consistency
-      const config = generateHAConfig(printers, webhookUrl, webhookUrl);
+      // Use the same config generator as embedded mode for consistency.
+      // Generate/inject the webhook secret so the produced automations authenticate.
+      const webhookSecret = await getOrCreateWebhookSecret();
+      const config = generateHAConfig(printers, webhookUrl, webhookUrl, webhookSecret);
 
       // Return printer registration data so the frontend can register
       // automations in the same per-printer format as auto-configure
@@ -130,6 +133,10 @@ export async function POST(request: NextRequest) {
         where: { haAutomationId: 'spoolmansync_external-mode-configured' },
       });
 
+      // The token-carrying automations are now applied — begin enforcing the
+      // webhook secret. (Done here, not at preview time, so deductions never break.)
+      await enableWebhookAuth();
+
       const totalTrays = printerRegistrations.reduce((sum: number, r: { trayIds: string[] }) => sum + r.trayIds.length, 0);
       await createActivityLog({
         type: 'automation_created',
@@ -176,11 +183,14 @@ export async function POST(request: NextRequest) {
         ? `http://127.0.0.1:${addonPort}/api/webhook`
         : 'http://spoolmansync-app:3000/api/webhook';
 
-      // Generate configuration
+      // Generate configuration. Generate/inject the webhook secret so the
+      // produced automations authenticate to the webhook.
+      const webhookSecret = await getOrCreateWebhookSecret();
       const config = generateHAConfig(
         printers,
         internalWebhookUrl,
-        internalWebhookUrl
+        internalWebhookUrl,
+        webhookSecret
       );
 
       // Write config files to HA config directory
@@ -354,6 +364,10 @@ export async function POST(request: NextRequest) {
           });
           console.log(`Cleaned up ${staleRecords.length} stale automation record(s)`);
         }
+
+        // Token-carrying automations have been written and HA (re)started — begin
+        // enforcing the webhook secret now that the applied automations carry it.
+        await enableWebhookAuth();
 
         const allTrayIds = printers.flatMap(p => [
           ...p.ams_units.flatMap(ams => ams.trays.map(t => t.entity_id)),
