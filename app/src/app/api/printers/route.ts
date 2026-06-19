@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { HomeAssistantClient, HATray } from '@/lib/api/homeassistant';
 import { SpoolmanClient, Spool } from '@/lib/api/spoolman';
 import { getHiddenPrinters } from '@/app/api/printers/setup/route';
+import { getVirtualPrinters, virtualPrintersToHAPrinters } from '@/lib/virtual-printers';
 
 interface MismatchInfo {
   type: 'material' | 'color' | 'both';
@@ -112,6 +113,13 @@ export async function GET() {
           return ![...hiddenTitles].some(t => name.includes(t) || entityId.includes(t));
         })
       : allPrinters;
+
+    // Merge in user-defined virtual printers (dry boxes / dryers, issue #67).
+    // They have no HA entity and no automation record, so they're enriched with
+    // spool data below and rendered like any printer, but are skipped by the
+    // staleness check and never receive usage webhooks.
+    const virtualPrinters = virtualPrintersToHAPrinters(await getVirtualPrinters());
+    printers.push(...virtualPrinters);
 
     // If Spoolman is configured, enrich with spool data
     if (spoolmanConnection) {

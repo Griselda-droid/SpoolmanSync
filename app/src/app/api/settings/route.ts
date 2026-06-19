@@ -10,6 +10,7 @@ import {
   completeHAOnboarding,
 } from '@/lib/api/homeassistant';
 import { createActivityLog } from '@/lib/activity-log';
+import { isWebhookAuthEnabled } from '@/lib/webhook-secret';
 
 export async function GET() {
   try {
@@ -48,6 +49,8 @@ export async function GET() {
       // Fetch optional settings
       const qrBaseUrlSetting = await prisma.settings.findUnique({ where: { key: 'qr_base_url' } });
       const showLocationSetting = await prisma.settings.findUnique({ where: { key: 'show_spool_location' } });
+      const neverAutoClearSetting = await prisma.settings.findUnique({ where: { key: 'never_auto_clear_tray' } });
+      const webhookAuthEnabled = await isWebhookAuthEnabled();
 
       return NextResponse.json({
         embeddedMode: false,
@@ -63,6 +66,8 @@ export async function GET() {
         } : null,
         qrBaseUrl: qrBaseUrlSetting?.value || '',
         showSpoolLocation: showLocationSetting?.value === 'true',
+        neverAutoClearTray: neverAutoClearSetting?.value === 'true',
+        webhookConfigured: webhookAuthEnabled,
       });
     }
 
@@ -204,9 +209,12 @@ export async function GET() {
       if (adminCredsSetting) {
         try {
           const creds = JSON.parse(adminCredsSetting.value);
+          // Do NOT return the password here — it would be served to any client on
+          // every settings load. Expose only that a password exists; the UI fetches
+          // the actual password on explicit user action (POST type 'reveal_ha_password').
           adminCredentials = {
             username: creds.username,
-            password: creds.password,
+            hasPassword: !!creds.password,
           };
         } catch {
           console.error('Failed to parse admin credentials');
@@ -243,6 +251,8 @@ export async function GET() {
     // Fetch optional settings
     const qrBaseUrlSetting = await prisma.settings.findUnique({ where: { key: 'qr_base_url' } });
     const showLocationSetting = await prisma.settings.findUnique({ where: { key: 'show_spool_location' } });
+    const neverAutoClearSetting = await prisma.settings.findUnique({ where: { key: 'never_auto_clear_tray' } });
+    const webhookAuthEnabled = await isWebhookAuthEnabled();
 
     return NextResponse.json({
       embeddedMode,
@@ -254,6 +264,8 @@ export async function GET() {
       } : null,
       qrBaseUrl: qrBaseUrlSetting?.value || '',
       showSpoolLocation: showLocationSetting?.value === 'true',
+      neverAutoClearTray: neverAutoClearSetting?.value === 'true',
+      webhookConfigured: webhookAuthEnabled,
     });
   } catch (error) {
     console.error('Error fetching settings:', error);
@@ -337,6 +349,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
+    if (type === 'never_auto_clear_tray') {
+      // When enabled, the webhook never auto-unassigns a spool on an empty-tray
+      // report (issue #65). Defaults off to preserve existing auto-clear behavior.
+      const enabled = body.enabled === true;
+      await prisma.settings.upsert({
+        where: { key: 'never_auto_clear_tray' },
+        create: { key: 'never_auto_clear_tray', value: String(enabled) },
+        update: { value: String(enabled) },
+      });
+      return NextResponse.json({ success: true });
+    }
+
+    if (type === 'reveal_ha_password') {
+      // Return the stored HA admin password only on explicit user action, rather
+      // than including it in every settings GET response (avoids passive exposure).
+      if (!isEmbeddedMode()) {
+        return NextResponse.json({ error: 'Not available in this mode' }, { status: 400 });
+      }
+      const adminCredsSetting = await prisma.settings.findUnique({ where: { key: 'ha_admin_credentials' } });
+      if (!adminCredsSetting) {
+        return NextResponse.json({ error: 'No admin credentials stored' }, { status: 404 });
+      }
+      try {
+        const creds = JSON.parse(adminCredsSetting.value);
+        return NextResponse.json({ username: creds.username, password: creds.password });
+      } catch {
+        return NextResponse.json({ error: 'Failed to read admin credentials' }, { status: 500 });
+      }
+    }
+
     if (type === 'qr_base_url') {
       // Save QR code base URL override
       const qrBaseUrl = (url || '').trim().replace(/\/+$/, '');
@@ -353,6 +395,11 @@ export async function POST(request: NextRequest) {
     }
 
     if (type === 'spoolman') {
+      // Validate input before constructing the client (avoid a 500 on bad input)
+      if (!url || typeof url !== 'string' || !url.trim()) {
+        return NextResponse.json({ error: 'A Spoolman URL is required' }, { status: 400 });
+      }
+
       // Validate Spoolman connection
       const client = new SpoolmanClient(url);
       const isValid = await client.checkConnection();

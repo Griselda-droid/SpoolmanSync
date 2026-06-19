@@ -28,7 +28,7 @@ export interface HAAutomation {
   mode?: string;
 }
 
-export type PrinterBrand = 'bambu_lab' | 'creality';
+export type PrinterBrand = 'bambu_lab' | 'creality' | 'virtual';
 
 export interface HAPrinter {
   brand: PrinterBrand;
@@ -42,6 +42,7 @@ export interface HAPrinter {
   print_weight_entity?: string;
   print_progress_entity?: string;
   used_material_entity?: string;  // Creality's used_material_length sensor (cm)
+  is_virtual?: boolean;  // True for user-defined virtual printers (dry boxes/dryers)
 }
 
 export interface HAAMS {
@@ -301,6 +302,7 @@ export class HomeAssistantClient {
   private expiresAt: Date | null;
   private embeddedMode: boolean;
   private addonMode: boolean;
+  private refreshPromise: Promise<void> | null = null;
 
   /**
    * Authenticate with HA using username/password via the login flow API.
@@ -490,8 +492,12 @@ export class HomeAssistantClient {
     );
   }
 
+  // Refresh the token this many ms before it actually expires, so the token
+  // doesn't lapse between the expiry check and the subsequent API call.
+  private static readonly TOKEN_REFRESH_MARGIN_MS = 60_000;
+
   /**
-   * Refresh the access token if expired
+   * Refresh the access token if expired (or about to expire)
    */
   private async ensureValidToken(): Promise<void> {
     // Add-on mode: Supervisor token is always valid while add-on runs
@@ -499,8 +505,11 @@ export class HomeAssistantClient {
       return;
     }
 
-    // If no expiry set or not expired, token is valid
-    if (!this.expiresAt || new Date() < this.expiresAt) {
+    // If no expiry set, or not expiring within the safety margin, token is valid
+    if (
+      !this.expiresAt ||
+      new Date(Date.now() + HomeAssistantClient.TOKEN_REFRESH_MARGIN_MS) < this.expiresAt
+    ) {
       return;
     }
 
@@ -509,6 +518,24 @@ export class HomeAssistantClient {
       throw new Error('Access token expired and no refresh token available');
     }
 
+    // Coalesce concurrent refreshes: if one is already in flight, await it
+    // instead of firing a second refresh request.
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = this.refreshAccessToken();
+    try {
+      await this.refreshPromise;
+    } finally {
+      this.refreshPromise = null;
+    }
+  }
+
+  /**
+   * Perform the actual token refresh against HA's /auth/token endpoint.
+   */
+  private async refreshAccessToken(): Promise<void> {
     // Refresh the token
     // Note: HA requires client_id for refresh token requests (must match original OAuth client_id)
     const response = await fetch(`${this.baseUrl}/auth/token`, {
@@ -518,20 +545,29 @@ export class HomeAssistantClient {
       },
       body: new URLSearchParams({
         grant_type: 'refresh_token',
-        refresh_token: this.refreshToken,
+        refresh_token: this.refreshToken!,
         client_id: this.clientId,
       }),
     });
 
     if (!response.ok) {
-      throw new Error('Failed to refresh access token');
+      const body = await response.text().catch(() => '');
+      throw new Error(
+        `Failed to refresh HA access token: ${response.status}${body ? ` - ${body}` : ''}`
+      );
     }
 
     const tokens = await response.json();
     this.accessToken = tokens.access_token;
-    this.expiresAt = tokens.expires_in
-      ? new Date(Date.now() + tokens.expires_in * 1000)
-      : null;
+    // Mirror loginWithCredentials: default to 1800s (30 min) if HA omits expires_in,
+    // otherwise the token would be treated as never-expiring.
+    this.expiresAt = new Date(Date.now() + (tokens.expires_in || 1800) * 1000);
+
+    // HA may rotate the refresh token. Only adopt it when present so a response
+    // without one doesn't clobber the stored refresh token with undefined/null.
+    if (tokens.refresh_token) {
+      this.refreshToken = tokens.refresh_token;
+    }
 
     // Update stored tokens (only if we have a token)
     if (this.accessToken) {
@@ -539,6 +575,8 @@ export class HomeAssistantClient {
         data: {
           accessToken: this.accessToken,
           expiresAt: this.expiresAt,
+          // Persist the rotated refresh token only when HA returned a new one.
+          ...(tokens.refresh_token ? { refreshToken: this.refreshToken } : {}),
         },
       });
     }
@@ -605,37 +643,6 @@ export class HomeAssistantClient {
    */
   async getState(entityId: string): Promise<HAState> {
     return this.fetch(`/states/${entityId}`);
-  }
-
-  /**
-   * Render a Jinja2 template in Home Assistant
-   * Used for device-based entity discovery when entity ID prefixes don't match
-   */
-  async renderTemplate(template: string): Promise<string> {
-    // Can't use this.fetch() because /api/template returns plain text, not JSON
-    await this.ensureValidToken();
-
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    };
-
-    if (this.accessToken) {
-      headers['Authorization'] = `Bearer ${this.accessToken}`;
-    }
-
-    const response = await fetch(`${this.baseUrl}/api/template`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ template }),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(`HA template API error: ${response.status} - ${error}`);
-    }
-
-    // The /api/template endpoint returns the rendered template as plain text
-    return response.text();
   }
 
   /**
@@ -898,6 +905,25 @@ export class HomeAssistantClient {
     // Discover Creality printers from ha_creality_ws integration
     const crealityPrinters = this.discoverCrealityPrinters(entities, devices, stateMap);
     printers.push(...crealityPrinters);
+
+    // Single-spool / non-AMS printers (e.g. Ender 3 V3 KE with no CFS) expose no
+    // assignable slot, so they can't be tracked. Synthesize one virtual external
+    // spool slot for any discovered printer that has zero AMS units and zero
+    // external spools, so the user can assign a spool to it (issue #68). The
+    // synthetic id has no backing HA entity; it is used purely as the assignment
+    // key (active_tray), so it never passes through the entity_id→unique_id
+    // resolver and survives unchanged end-to-end.
+    for (const printer of printers) {
+      if (printer.ams_units.length === 0 && printer.external_spools.length === 0) {
+        const syntheticId = `${printer.prefix}_virtual_external_spool`;
+        printer.external_spools.push({
+          entity_id: syntheticId,
+          unique_id: syntheticId,
+          tray_number: 0,
+          is_external: true,
+        });
+      }
+    }
 
     return printers;
   }

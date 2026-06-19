@@ -24,7 +24,7 @@ interface FilterField {
 
 interface AdminCredentials {
   username: string;
-  password: string;
+  hasPassword: boolean;
 }
 
 interface Settings {
@@ -33,10 +33,12 @@ interface Settings {
   homeassistant: {
     url: string;
     connected: boolean;
-    adminCredentials?: AdminCredentials;
+    adminCredentials?: AdminCredentials | null;
     error?: string;
   } | null;
   spoolman: { url: string; connected: boolean } | null;
+  neverAutoClearTray?: boolean;
+  webhookConfigured?: boolean;
 }
 
 interface ConfigEntry {
@@ -44,6 +46,17 @@ interface ConfigEntry {
   domain: string;
   title: string;
   state: string;
+}
+
+interface VirtualPrinterSlot {
+  id: string;
+  name: string;
+}
+
+interface VirtualPrinter {
+  id: string;
+  name: string;
+  slots: VirtualPrinterSlot[];
 }
 
 function SettingsContent() {
@@ -65,7 +78,9 @@ function SettingsContent() {
   const [readdingPrinter, setReaddingPrinter] = useState<string | null>(null);
 
   // Admin credentials state (embedded mode)
-  const [showPassword, setShowPassword] = useState(false);
+  // Password is no longer returned on load; it is fetched on demand via the reveal endpoint.
+  const [revealedPassword, setRevealedPassword] = useState<string | null>(null);
+  const [revealingPassword, setRevealingPassword] = useState(false);
 
   // Reconnect form state (embedded mode, broken connection)
   const [reconnectUsername, setReconnectUsername] = useState('admin');
@@ -80,6 +95,9 @@ function SettingsContent() {
 
   // Dashboard display settings
   const [showSpoolLocation, setShowSpoolLocation] = useState(false);
+
+  // Sync behavior settings
+  const [neverAutoClearTray, setNeverAutoClearTray] = useState(false);
 
   // QR base URL state
   const [qrBaseUrl, setQrBaseUrl] = useState('');
@@ -96,8 +114,17 @@ function SettingsContent() {
   const [availableGroups, setAvailableGroups] = useState<AvailableGroup[]>([]);
   const [savingAlerts, setSavingAlerts] = useState(false);
 
+  // Virtual printers states
+  const [virtualPrinters, setVirtualPrinters] = useState<VirtualPrinter[]>([]);
+  const [newVpName, setNewVpName] = useState('');
+  const [newVpSlotCount, setNewVpSlotCount] = useState(1);
+  const [creatingVp, setCreatingVp] = useState(false);
+  const [mutatingVp, setMutatingVp] = useState<string | null>(null);
+  const [editingVpName, setEditingVpName] = useState<Record<string, string>>({});
+
   useEffect(() => {
     fetchSettings();
+    fetchVirtualPrinters();
 
     // Handle OAuth callback messages
     const success = searchParams.get('success');
@@ -163,6 +190,9 @@ function SettingsContent() {
       }
       if (data.showSpoolLocation !== undefined) {
         setShowSpoolLocation(data.showSpoolLocation);
+      }
+      if (data.neverAutoClearTray !== undefined) {
+        setNeverAutoClearTray(data.neverAutoClearTray);
       }
     } catch {
       toast.error('Failed to load settings');
@@ -279,6 +309,27 @@ function SettingsContent() {
       toast.success(`${label} copied to clipboard`);
     } catch {
       toast.error('Failed to copy to clipboard');
+    }
+  };
+
+  const revealPassword = async () => {
+    setRevealingPassword(true);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'reveal_ha_password' }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to reveal password');
+      }
+      const data = await res.json();
+      setRevealedPassword(data.password ?? '');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to reveal password');
+    } finally {
+      setRevealingPassword(false);
     }
   };
 
@@ -439,6 +490,131 @@ function SettingsContent() {
     }
   };
 
+  const fetchVirtualPrinters = async () => {
+    try {
+      const res = await fetch('/api/virtual-printers');
+      if (res.ok) {
+        const data = await res.json();
+        setVirtualPrinters(data.virtualPrinters || []);
+      }
+    } catch {
+      // Silently fail
+    }
+  };
+
+  const createVirtualPrinter = async () => {
+    const name = newVpName.trim();
+    if (!name) {
+      toast.error('Please enter a name for the virtual printer');
+      return;
+    }
+
+    setCreatingVp(true);
+    try {
+      const res = await fetch('/api/virtual-printers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, slotCount: newVpSlotCount }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to create virtual printer');
+      }
+
+      toast.success('Virtual printer created');
+      setNewVpName('');
+      setNewVpSlotCount(1);
+      fetchVirtualPrinters();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to create virtual printer');
+    } finally {
+      setCreatingVp(false);
+    }
+  };
+
+  const patchVirtualPrinter = async (
+    id: string,
+    changes: { name?: string; slots?: { id?: string; name: string }[] },
+    successMessage: string,
+  ) => {
+    setMutatingVp(id);
+    try {
+      const res = await fetch('/api/virtual-printers', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...changes }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to update virtual printer');
+      }
+
+      toast.success(successMessage);
+      fetchVirtualPrinters();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update virtual printer');
+    } finally {
+      setMutatingVp(null);
+    }
+  };
+
+  const renameVirtualPrinter = (vp: VirtualPrinter) => {
+    const name = (editingVpName[vp.id] ?? vp.name).trim();
+    if (!name) {
+      toast.error('Name cannot be empty');
+      return;
+    }
+    if (name === vp.name) return;
+    patchVirtualPrinter(vp.id, { name }, 'Virtual printer renamed');
+  };
+
+  const addVirtualPrinterSlot = (vp: VirtualPrinter) => {
+    if (vp.slots.length >= 16) {
+      toast.error('Maximum of 16 slots');
+      return;
+    }
+    const slots = [
+      ...vp.slots.map((s) => ({ id: s.id, name: s.name })),
+      { name: `Slot ${vp.slots.length + 1}` },
+    ];
+    patchVirtualPrinter(vp.id, { slots }, 'Slot added');
+  };
+
+  const removeVirtualPrinterSlot = (vp: VirtualPrinter, slotId: string) => {
+    const slots = vp.slots
+      .filter((s) => s.id !== slotId)
+      .map((s) => ({ id: s.id, name: s.name }));
+    patchVirtualPrinter(vp.id, { slots }, 'Slot removed');
+  };
+
+  const deleteVirtualPrinter = async (vp: VirtualPrinter) => {
+    if (!window.confirm(`Delete "${vp.name}"? Any spool assignments to its slots will be cleared.`)) {
+      return;
+    }
+    setMutatingVp(vp.id);
+    try {
+      const res = await fetch('/api/virtual-printers', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: vp.id }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to delete virtual printer');
+      }
+
+      toast.success('Virtual printer deleted');
+      fetchVirtualPrinters();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete virtual printer');
+    } finally {
+      setMutatingVp(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -528,7 +704,7 @@ function SettingsContent() {
                       </div>
 
                       {/* Admin Credentials Section */}
-                      {settings.homeassistant.adminCredentials && (
+                      {settings.homeassistant.adminCredentials ? (
                         <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg space-y-3">
                           <div>
                             <p className="font-medium text-blue-700 dark:text-blue-300">Home Assistant Login</p>
@@ -562,36 +738,73 @@ function SettingsContent() {
                                 </Button>
                               </div>
                             </div>
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
-                              <span className="text-sm text-muted-foreground">Password:</span>
-                              <div className="flex items-center gap-2">
-                                <code className="px-2 py-1 bg-background rounded text-sm font-mono truncate max-w-[150px] sm:max-w-none">
-                                  {showPassword
-                                    ? settings.homeassistant.adminCredentials.password
-                                    : '••••••••••••'}
-                                </code>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 px-2 shrink-0"
-                                  onClick={() => setShowPassword(!showPassword)}
-                                >
-                                  {showPassword ? 'Hide' : 'Show'}
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 px-2 shrink-0"
-                                  onClick={() => copyToClipboard(settings.homeassistant!.adminCredentials!.password, 'Password')}
-                                >
-                                  Copy
-                                </Button>
+                            {settings.homeassistant.adminCredentials.hasPassword ? (
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                                <span className="text-sm text-muted-foreground">Password:</span>
+                                <div className="flex items-center gap-2">
+                                  <code className="px-2 py-1 bg-background rounded text-sm font-mono truncate max-w-[150px] sm:max-w-none">
+                                    {revealedPassword !== null ? revealedPassword : '••••••••••••'}
+                                  </code>
+                                  {revealedPassword !== null ? (
+                                    <>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 px-2 shrink-0"
+                                        onClick={() => setRevealedPassword(null)}
+                                      >
+                                        Hide
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-7 px-2 shrink-0"
+                                        onClick={() => copyToClipboard(revealedPassword, 'Password')}
+                                      >
+                                        Copy
+                                      </Button>
+                                    </>
+                                  ) : (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 px-2 shrink-0"
+                                      onClick={revealPassword}
+                                      disabled={revealingPassword}
+                                    >
+                                      {revealingPassword ? 'Revealing...' : 'Reveal password'}
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
-                            </div>
+                            ) : (
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
+                                <span className="text-sm text-muted-foreground">Password:</span>
+                                <span className="text-sm text-muted-foreground italic">
+                                  No stored password available
+                                </span>
+                              </div>
+                            )}
                           </div>
 
                           <p className="text-xs text-muted-foreground pt-2 border-t border-blue-200 dark:border-blue-800">
                             If you change the password in Home Assistant, you can reconnect here using the new password.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                          <p className="font-medium text-blue-700 dark:text-blue-300">Home Assistant Login</p>
+                          <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
+                            No stored admin credentials are available. You can still access Home Assistant directly at{' '}
+                            <a
+                              href="http://localhost:8123"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="underline hover:no-underline"
+                            >
+                              localhost:8123
+                            </a>
+                            {' '}using the credentials you set up.
                           </p>
                         </div>
                       )}
@@ -779,12 +992,142 @@ function SettingsContent() {
                       ))}
                     </div>
                   )}
+                  {settings?.webhookConfigured && (
+                    <p className="text-xs text-muted-foreground pt-2 border-t">
+                      Webhook authentication: enabled
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
           )}
 
           {settings?.homeassistant?.connected && <Separator />}
+
+          {/* Virtual Printers */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Virtual Printers</CardTitle>
+              <CardDescription>
+                Define storage locations such as filament dryers, dry boxes, or shelves with assignable slots.
+                They appear on the dashboard as assignable slots for QR/NFC inventory management and are not tracked for usage.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {virtualPrinters.length === 0 && (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <p>No virtual printers yet.</p>
+                    <p className="text-sm mt-1">Create one below to track filament that isn&apos;t in a printer.</p>
+                  </div>
+                )}
+
+                {virtualPrinters.map((vp) => (
+                  <div key={vp.id} className="p-3 bg-muted rounded-lg space-y-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <Input
+                        value={editingVpName[vp.id] ?? vp.name}
+                        onChange={(e) =>
+                          setEditingVpName((prev) => ({ ...prev, [vp.id]: e.target.value }))
+                        }
+                        onBlur={() => renameVirtualPrinter(vp)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+                        }}
+                        disabled={mutatingVp === vp.id}
+                        className="font-medium bg-background"
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="shrink-0"
+                        onClick={() => deleteVirtualPrinter(vp)}
+                        disabled={mutatingVp === vp.id}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {vp.slots.length} slot{vp.slots.length !== 1 ? 's' : ''}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {vp.slots.map((slot) => (
+                          <span
+                            key={slot.id}
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-background rounded text-sm"
+                          >
+                            {slot.name}
+                            <button
+                              type="button"
+                              aria-label={`Remove ${slot.name}`}
+                              className="text-muted-foreground hover:text-foreground disabled:opacity-50"
+                              onClick={() => removeVirtualPrinterSlot(vp, slot.id)}
+                              disabled={mutatingVp === vp.id}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7"
+                          onClick={() => addVirtualPrinterSlot(vp)}
+                          disabled={mutatingVp === vp.id || vp.slots.length >= 16}
+                        >
+                          + Add slot
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Create new virtual printer */}
+                <div className="pt-3 border-t space-y-3">
+                  <p className="text-sm font-medium">Add a virtual printer</p>
+                  <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
+                    <div className="flex-1 space-y-1">
+                      <Label htmlFor="new-vp-name">Name</Label>
+                      <Input
+                        id="new-vp-name"
+                        placeholder="e.g., Dry Box A"
+                        value={newVpName}
+                        onChange={(e) => setNewVpName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') createVirtualPrinter();
+                        }}
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="new-vp-slots">Slots</Label>
+                      <Input
+                        id="new-vp-slots"
+                        type="number"
+                        min={1}
+                        max={16}
+                        value={newVpSlotCount}
+                        onChange={(e) => {
+                          const n = Number(e.target.value);
+                          setNewVpSlotCount(Number.isNaN(n) ? 1 : Math.min(16, Math.max(1, n)));
+                        }}
+                        className="w-24"
+                      />
+                    </div>
+                    <Button
+                      onClick={createVirtualPrinter}
+                      disabled={creatingVp || !newVpName.trim()}
+                    >
+                      {creatingVp ? 'Creating...' : 'Create'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Separator />
 
           {/* Spoolman Settings */}
           <Card>
@@ -855,6 +1198,37 @@ function SettingsContent() {
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         Display the Spoolman location field on each spool card (e.g., shelf, dry box, bin number)
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="never-auto-clear-tray"
+                      checked={neverAutoClearTray}
+                      onCheckedChange={async (checked) => {
+                        const enabled = checked === true;
+                        setNeverAutoClearTray(enabled);
+                        try {
+                          const res = await fetch('/api/settings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ type: 'never_auto_clear_tray', enabled }),
+                          });
+                          if (!res.ok) throw new Error();
+                          toast.success(enabled ? 'Tray assignments will no longer be auto-cleared' : 'Auto-clear of tray assignments re-enabled');
+                        } catch {
+                          setNeverAutoClearTray(!enabled);
+                          toast.error('Failed to save setting');
+                        }
+                      }}
+                    />
+                    <div>
+                      <Label htmlFor="never-auto-clear-tray" className="text-sm font-medium cursor-pointer">
+                        Never auto-clear tray assignments
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        When enabled, SpoolmanSync will not remove a spool from a tray when the printer briefly reports it empty. Useful for LAN-only setups where the AMS occasionally reports false empty states.
                       </p>
                     </div>
                   </div>
