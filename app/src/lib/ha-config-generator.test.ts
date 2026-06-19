@@ -117,6 +117,19 @@ describe('generateHAConfig — output is well-formed YAML', () => {
     expect(triggerIds).toContain('offline');
   });
 
+  it('tray trigger ignores unavailable/unknown availability flickers (#69)', () => {
+    for (const printer of [bambuPrinter(), crealityPrinter()]) {
+      const { automationsYaml } = generateHAConfig([printer], 'http://hook', 'http://hook');
+      const parsed = parseYaml(automationsYaml);
+      const updateSpool = parsed.find((a: { id: string }) => a.id === `spoolmansync_update_spool_${printer.prefix}`);
+      const trayTrigger = updateSpool.triggers.find((t: { id?: string }) => t.id === 'tray');
+      // A mid-print MQTT blip (N -> unavailable -> N) must not run the automation,
+      // which would otherwise reset the usage meter and under-count the print.
+      expect(trayTrigger.not_from).toEqual(['unavailable', 'unknown']);
+      expect(trayTrigger.not_to).toEqual(['unavailable', 'unknown']);
+    }
+  });
+
   it('returns empty config for no printers', () => {
     const cfg = generateHAConfig([], 'http://hook', 'http://hook');
     expect(cfg.automationsYaml).toBe('[]');

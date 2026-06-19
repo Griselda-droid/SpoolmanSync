@@ -231,6 +231,16 @@ function generateAutomationsYaml(
   triggers:
     - entity_id: sensor.spoolmansync_${prefix}_active_tray
       id: tray
+      # Ignore transient availability flickers (e.g. MQTT reconnects). A blip to
+      # 'unavailable' and back is not a real tray change, and must not run this
+      # automation — otherwise the tray-change default branch resets the usage
+      # meter mid-print and the filament tracked so far is lost (#69).
+      not_from:
+        - unavailable
+        - unknown
+      not_to:
+        - unavailable
+        - unknown
       trigger: state
     - entity_id: ${entities.current_stage}
       to:
@@ -496,6 +506,16 @@ function generateCrealityAutomationsYaml(
   triggers:
     - entity_id: sensor.spoolmansync_${prefix}_active_tray
       id: tray
+      # Ignore transient availability flickers (e.g. MQTT reconnects). A blip to
+      # 'unavailable' and back is not a real tray change, and must not run this
+      # automation — otherwise the tray-change default branch resets the usage
+      # meter mid-print and the filament tracked so far is lost (#69).
+      not_from:
+        - unavailable
+        - unknown
+      not_to:
+        - unavailable
+        - unknown
       trigger: state
     - entity_id: ${entities.current_stage}
       to:
