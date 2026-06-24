@@ -5,6 +5,13 @@ All notable changes to SpoolmanSync will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2] - 2026-06-23
+
+> Upgrade note: existing virtual-printer assignments migrate automatically the first time the dashboard or Settings page loads after updating — no manual steps required.
+
+### Fixed
+- Virtual-printer spool assignments now use a readable key in Spoolman — `virtual_<printer name>_tray_<N>`, matching the real-AMS key style — instead of the opaque `virtual:<uuid>:<uuid>` (#70). Existing assignments are migrated automatically. Renaming a virtual printer re-keys its assignments so none are lost, and virtual-printer names are now required to be unique.
+
 ## [1.6.1] - 2026-06-19
 
 > Upgrade note: re-run **Auto-configure** (regenerate and re-apply the automations) and restart Home Assistant to pick up the updated tray trigger.
