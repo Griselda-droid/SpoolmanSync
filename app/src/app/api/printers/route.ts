@@ -3,7 +3,7 @@ import prisma from '@/lib/db';
 import { HomeAssistantClient, HATray } from '@/lib/api/homeassistant';
 import { SpoolmanClient, Spool } from '@/lib/api/spoolman';
 import { getHiddenPrinters } from '@/app/api/printers/setup/route';
-import { getVirtualPrinters, virtualPrintersToHAPrinters } from '@/lib/virtual-printers';
+import { getVirtualPrinters, virtualPrintersToHAPrinters, migrateVirtualKeys, withVirtualLock } from '@/lib/virtual-printers';
 
 interface MismatchInfo {
   type: 'material' | 'color' | 'both';
@@ -124,6 +124,12 @@ export async function GET() {
     // If Spoolman is configured, enrich with spool data
     if (spoolmanConnection) {
       const spoolmanClient = new SpoolmanClient(spoolmanConnection.url);
+
+      // One-time: migrate legacy virtual-slot keys to the friendly format before
+      // we match assignments, so re-keyed spools resolve to their virtual slots.
+      // Serialized so it can't clobber a concurrent virtual-printer mutation.
+      await withVirtualLock(() => migrateVirtualKeys(spoolmanClient));
+
       const spools = await spoolmanClient.getSpools();
 
       // Build entity_id → unique_id map from discovered trays for migration.
@@ -134,6 +140,10 @@ export async function GET() {
       // Also build a set of all known unique_ids for fallback matching
       const allUniqueIds = new Set<string>();
       for (const printer of printers) {
+        // Skip virtual printers: their friendly keys (virtual_<name>_tray_N) end
+        // in _tray_N and would otherwise become a target for the renamed-real-tray
+        // suffix-fallback below, which could re-point a real spool onto a dry box.
+        if (printer.is_virtual) continue;
         for (const ams of printer.ams_units) {
           for (const tray of ams.trays) {
             if (tray.unique_id) {

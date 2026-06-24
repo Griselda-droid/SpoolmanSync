@@ -5,6 +5,10 @@ import {
   getVirtualPrinters,
   saveVirtualPrinters,
   virtualSlotKey,
+  nextSlotNumber,
+  rekeyVirtualAssignments,
+  migrateVirtualKeys,
+  withVirtualLock,
   VirtualPrinter,
   VirtualSlot,
 } from '@/lib/virtual-printers';
@@ -12,33 +16,46 @@ import { SpoolmanClient } from '@/lib/api/spoolman';
 import { createActivityLog } from '@/lib/activity-log';
 
 const MAX_SLOTS = 16;
+const MAX_NAME_LENGTH = 100;
+
+async function getSpoolmanClient(): Promise<SpoolmanClient | null> {
+  const conn = await prisma.spoolmanConnection.findFirst();
+  return conn ? new SpoolmanClient(conn.url) : null;
+}
+
+/** 503 returned for operations that must re-key/clear Spoolman but have no client. */
+function spoolmanRequired(): NextResponse {
+  return NextResponse.json(
+    { error: 'Spoolman is not connected, so spool assignments cannot be updated. Connect Spoolman and try again.' },
+    { status: 503 },
+  );
+}
+
+/** Case-insensitive name-collision check among virtual printers. */
+function nameTaken(printers: VirtualPrinter[], name: string, exceptId?: string): boolean {
+  const n = name.trim().toLowerCase();
+  return printers.some((p) => p.id !== exceptId && p.name.trim().toLowerCase() === n);
+}
 
 /**
- * Best-effort: clear Spoolman assignments for a set of (now-removed) virtual
- * slot keys, so deleting a virtual printer/slot doesn't leave orphaned
- * extra.active_tray values pointing at slots that no longer exist.
+ * Clear Spoolman assignments for the given virtual slot keys. Propagates errors
+ * so callers can keep the model and Spoolman in sync (don't drop a slot/printer
+ * from the model if its assignment couldn't be cleared).
  */
-async function unassignSlotKeys(slotKeys: string[]): Promise<void> {
-  if (slotKeys.length === 0) return;
-  try {
-    const conn = await prisma.spoolmanConnection.findFirst();
-    if (!conn) return;
-    const client = new SpoolmanClient(conn.url);
-    const spools = await client.getSpools();
-    const jsonKeys = new Set(slotKeys.map((k) => JSON.stringify(k)));
-    for (const spool of spools) {
-      const raw = spool.extra?.['active_tray'];
-      if (raw && jsonKeys.has(raw)) {
-        await client.unassignSpoolFromTray(spool.id);
-      }
-    }
-  } catch (err) {
-    console.error('Failed to unassign spools from removed virtual slots:', err);
+async function unassignKeys(client: SpoolmanClient, keys: string[]): Promise<void> {
+  if (keys.length === 0) return;
+  const spools = await client.getSpools(true);
+  const jsonKeys = new Set(keys.map((k) => JSON.stringify(k)));
+  for (const spool of spools) {
+    const raw = spool.extra?.['active_tray'];
+    if (raw && jsonKeys.has(raw)) await client.unassignSpoolFromTray(spool.id);
   }
 }
 
 export async function GET() {
   try {
+    const client = await getSpoolmanClient();
+    if (client) await withVirtualLock(() => migrateVirtualKeys(client));
     const virtualPrinters = await getVirtualPrinters();
     return NextResponse.json({ virtualPrinters });
   } catch (error) {
@@ -54,24 +71,33 @@ export async function POST(request: NextRequest) {
     if (!name) {
       return NextResponse.json({ error: 'A name is required' }, { status: 400 });
     }
+    if (name.length > MAX_NAME_LENGTH) {
+      return NextResponse.json({ error: `Name must be ${MAX_NAME_LENGTH} characters or fewer` }, { status: 400 });
+    }
     const slotCount = Math.min(Math.max(parseInt(body.slotCount, 10) || 1, 1), MAX_SLOTS);
 
-    const printers = await getVirtualPrinters();
-    const slots: VirtualSlot[] = Array.from({ length: slotCount }, (_, i) => ({
-      id: randomUUID(),
-      name: `Slot ${i + 1}`,
-    }));
-    const printer: VirtualPrinter = { id: randomUUID(), name, slots };
-    printers.push(printer);
-    await saveVirtualPrinters(printers);
+    return await withVirtualLock(async () => {
+      const client = await getSpoolmanClient();
+      if (client) await migrateVirtualKeys(client);
 
-    await createActivityLog({
-      type: 'virtual_printer_created',
-      message: `Created virtual printer "${name}" with ${slotCount} slot(s)`,
-      details: { id: printer.id, slotCount },
+      const printers = await getVirtualPrinters();
+      if (nameTaken(printers, name)) {
+        return NextResponse.json({ error: `A virtual printer named "${name}" already exists` }, { status: 409 });
+      }
+
+      const slots: VirtualSlot[] = Array.from({ length: slotCount }, (_, i) => ({ id: randomUUID(), number: i + 1 }));
+      const printer: VirtualPrinter = { id: randomUUID(), name, slots };
+      printers.push(printer);
+      await saveVirtualPrinters(printers);
+
+      await createActivityLog({
+        type: 'virtual_printer_created',
+        message: `Created virtual printer "${name}" with ${slotCount} slot(s)`,
+        details: { id: printer.id, slotCount },
+      });
+
+      return NextResponse.json({ success: true, virtualPrinter: printer });
     });
-
-    return NextResponse.json({ success: true, virtualPrinter: printer });
   } catch (error) {
     console.error('Error creating virtual printer:', error);
     return NextResponse.json({ error: 'Failed to create virtual printer' }, { status: 500 });
@@ -86,37 +112,65 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: 'A printer id is required' }, { status: 400 });
     }
 
-    const printers = await getVirtualPrinters();
-    const printer = printers.find((p) => p.id === id);
-    if (!printer) {
-      return NextResponse.json({ error: 'Virtual printer not found' }, { status: 404 });
-    }
+    return await withVirtualLock(async () => {
+      const client = await getSpoolmanClient();
+      if (client) await migrateVirtualKeys(client);
 
-    if (typeof body.name === 'string' && body.name.trim()) {
-      printer.name = body.name.trim();
-    }
+      const printers = await getVirtualPrinters();
+      const printer = printers.find((p) => p.id === id);
+      if (!printer) {
+        return NextResponse.json({ error: 'Virtual printer not found' }, { status: 404 });
+      }
 
-    // If a full slots array is supplied, replace it (preserving ids the client
-    // sends so existing assignments stay valid) and clear assignments for any
-    // slot that was removed.
-    if (Array.isArray(body.slots)) {
-      const oldKeys = new Set(printer.slots.map((s) => virtualSlotKey(printer.id, s.id)));
-      const newSlots: VirtualSlot[] = body.slots
-        .filter((s: unknown): s is { id?: string; name?: unknown } => !!s && typeof s === 'object')
-        .slice(0, MAX_SLOTS)
-        .map((s: { id?: string; name?: unknown }) => ({
-          id: typeof s.id === 'string' && s.id ? s.id : randomUUID(),
-          name: typeof s.name === 'string' && s.name.trim() ? s.name.trim() : 'Slot',
-        }));
-      printer.slots = newSlots;
+      // Rename — re-key the affected Spoolman assignments so nothing orphans.
+      if (typeof body.name === 'string') {
+        const newName = body.name.trim();
+        if (!newName) {
+          return NextResponse.json({ error: 'Name cannot be empty' }, { status: 400 });
+        }
+        if (newName.length > MAX_NAME_LENGTH) {
+          return NextResponse.json({ error: `Name must be ${MAX_NAME_LENGTH} characters or fewer` }, { status: 400 });
+        }
+        if (newName.toLowerCase() !== printer.name.toLowerCase() && nameTaken(printers, newName, id)) {
+          return NextResponse.json({ error: `A virtual printer named "${newName}" already exists` }, { status: 409 });
+        }
+        if (newName !== printer.name) {
+          // A rename changes the key; without Spoolman we cannot re-key, so do
+          // NOT diverge the model from the stored assignments.
+          if (!client) return spoolmanRequired();
+          const oldName = printer.name;
+          const remap = printer.slots.map((s) => ({
+            oldKey: virtualSlotKey(oldName, s.number),
+            newKey: virtualSlotKey(newName, s.number),
+          }));
+          await rekeyVirtualAssignments(client, remap); // atomic: rolls back + throws on failure
+          printer.name = newName;
+        }
+      }
 
-      const newKeys = new Set(newSlots.map((s) => virtualSlotKey(printer.id, s.id)));
-      const removedKeys = [...oldKeys].filter((k) => !newKeys.has(k));
-      await unassignSlotKeys(removedKeys);
-    }
+      // Explicit slot actions (avoids fragile full-array reconciliation).
+      const action = (body.action ?? '').toString();
+      if (action === 'addSlot') {
+        if (printer.slots.length >= MAX_SLOTS) {
+          return NextResponse.json({ error: `Maximum of ${MAX_SLOTS} slots` }, { status: 400 });
+        }
+        printer.slots.push({ id: randomUUID(), number: nextSlotNumber(printer.slots) });
+      } else if (action === 'removeSlot') {
+        const slotNumber = parseInt(body.slotNumber, 10);
+        if (!Number.isInteger(slotNumber)) {
+          return NextResponse.json({ error: 'A valid slotNumber is required' }, { status: 400 });
+        }
+        if (printer.slots.some((s) => s.number === slotNumber)) {
+          // Clear the assignment first; only drop the slot if that succeeded.
+          if (!client) return spoolmanRequired();
+          await unassignKeys(client, [virtualSlotKey(printer.name, slotNumber)]);
+          printer.slots = printer.slots.filter((s) => s.number !== slotNumber);
+        }
+      }
 
-    await saveVirtualPrinters(printers);
-    return NextResponse.json({ success: true, virtualPrinter: printer });
+      await saveVirtualPrinters(printers);
+      return NextResponse.json({ success: true, virtualPrinter: printer });
+    });
   } catch (error) {
     console.error('Error updating virtual printer:', error);
     return NextResponse.json({ error: 'Failed to update virtual printer' }, { status: 500 });
@@ -131,22 +185,29 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'A printer id is required' }, { status: 400 });
     }
 
-    const printers = await getVirtualPrinters();
-    const removed = printers.find((p) => p.id === id);
-    if (!removed) {
-      return NextResponse.json({ error: 'Virtual printer not found' }, { status: 404 });
-    }
+    return await withVirtualLock(async () => {
+      const client = await getSpoolmanClient();
+      if (client) await migrateVirtualKeys(client);
 
-    await saveVirtualPrinters(printers.filter((p) => p.id !== id));
-    await unassignSlotKeys(removed.slots.map((s) => virtualSlotKey(removed.id, s.id)));
+      const printers = await getVirtualPrinters();
+      const removed = printers.find((p) => p.id === id);
+      if (!removed) {
+        return NextResponse.json({ error: 'Virtual printer not found' }, { status: 404 });
+      }
+      // If it has slots, we must be able to clear their assignments first.
+      if (!client && removed.slots.length > 0) return spoolmanRequired();
 
-    await createActivityLog({
-      type: 'virtual_printer_deleted',
-      message: `Deleted virtual printer "${removed.name}"`,
-      details: { id: removed.id },
+      if (client) await unassignKeys(client, removed.slots.map((s) => virtualSlotKey(removed.name, s.number)));
+      await saveVirtualPrinters(printers.filter((p) => p.id !== id));
+
+      await createActivityLog({
+        type: 'virtual_printer_deleted',
+        message: `Deleted virtual printer "${removed.name}"`,
+        details: { id: removed.id },
+      });
+
+      return NextResponse.json({ success: true });
     });
-
-    return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting virtual printer:', error);
     return NextResponse.json({ error: 'Failed to delete virtual printer' }, { status: 500 });

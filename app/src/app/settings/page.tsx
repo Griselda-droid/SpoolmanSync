@@ -50,7 +50,7 @@ interface ConfigEntry {
 
 interface VirtualPrinterSlot {
   id: string;
-  name: string;
+  number: number;
 }
 
 interface VirtualPrinter {
@@ -535,7 +535,7 @@ function SettingsContent() {
 
   const patchVirtualPrinter = async (
     id: string,
-    changes: { name?: string; slots?: { id?: string; name: string }[] },
+    changes: { name?: string; action?: 'addSlot' | 'removeSlot'; slotNumber?: number },
     successMessage: string,
   ) => {
     setMutatingVp(id);
@@ -575,18 +575,11 @@ function SettingsContent() {
       toast.error('Maximum of 16 slots');
       return;
     }
-    const slots = [
-      ...vp.slots.map((s) => ({ id: s.id, name: s.name })),
-      { name: `Slot ${vp.slots.length + 1}` },
-    ];
-    patchVirtualPrinter(vp.id, { slots }, 'Slot added');
+    patchVirtualPrinter(vp.id, { action: 'addSlot' }, 'Slot added');
   };
 
-  const removeVirtualPrinterSlot = (vp: VirtualPrinter, slotId: string) => {
-    const slots = vp.slots
-      .filter((s) => s.id !== slotId)
-      .map((s) => ({ id: s.id, name: s.name }));
-    patchVirtualPrinter(vp.id, { slots }, 'Slot removed');
+  const removeVirtualPrinterSlot = (vp: VirtualPrinter, slotNumber: number) => {
+    patchVirtualPrinter(vp.id, { action: 'removeSlot', slotNumber }, 'Slot removed');
   };
 
   const deleteVirtualPrinter = async (vp: VirtualPrinter) => {
@@ -1058,12 +1051,12 @@ function SettingsContent() {
                             key={slot.id}
                             className="inline-flex items-center gap-1 px-2 py-1 bg-background rounded text-sm"
                           >
-                            {slot.name}
+                            Tray {slot.number}
                             <button
                               type="button"
-                              aria-label={`Remove ${slot.name}`}
+                              aria-label={`Remove Tray ${slot.number}`}
                               className="text-muted-foreground hover:text-foreground disabled:opacity-50"
-                              onClick={() => removeVirtualPrinterSlot(vp, slot.id)}
+                              onClick={() => removeVirtualPrinterSlot(vp, slot.number)}
                               disabled={mutatingVp === vp.id}
                             >
                               ×
