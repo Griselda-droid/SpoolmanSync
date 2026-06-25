@@ -5,6 +5,13 @@ All notable changes to SpoolmanSync will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.3] - 2026-06-25
+
+> Upgrade note (embedded mode): pull the latest images and recreate the containers, e.g. `docker compose pull && docker compose --profile embedded up -d`. On startup the bundled Home Assistant then refreshes ha-bambulab to the version shipped in the image.
+
+### Fixed
+- Embedded mode now keeps its bundled Home Assistant integrations up to date. Previously the bundled ha-bambulab was copied into the HA config only on first run and never refreshed, so existing embedded users stayed on an old version. The container now updates the bundled ha-bambulab (and ha_creality_ws) on startup whenever the image ships a newer version, without downgrading a newer copy or touching HACS-managed integrations. This delivers upstream ha-bambulab fixes, including the duplicate-AMS-device bug behind reports of phantom AMS HT units (#70).
+
 ## [1.6.2] - 2026-06-23
 
 > Upgrade note: existing virtual-printer assignments migrate automatically the first time the dashboard or Settings page loads after updating — no manual steps required.
