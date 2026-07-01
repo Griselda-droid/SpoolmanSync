@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { classifyTrayState, lengthToWeight, isValidTrayUuid, MATERIAL_DENSITY } from './webhook-helpers';
+import { classifyTrayState, lengthToWeight, isValidTrayUuid, isActivePrintState, MATERIAL_DENSITY } from './webhook-helpers';
 
 describe('classifyTrayState (issue #65 — never clear on transient states)', () => {
   it('treats unavailable/unknown/missing as transient (must NOT clear assignment)', () => {
@@ -60,5 +60,19 @@ describe('isValidTrayUuid', () => {
   it('accepts a real serial', () => {
     expect(isValidTrayUuid('A1B2C3D4')).toBe(true);
     expect(isValidTrayUuid('0000A0000')).toBe(true); // not all zeros
+  });
+});
+
+describe('isActivePrintState', () => {
+  it('treats terminal/unknown states as inactive', () => {
+    for (const state of [undefined, null, '', 'idle', 'finished', 'completed', 'complete', 'offline', 'off', 'none', 'unknown', 'unavailable']) {
+      expect(isActivePrintState(state)).toBe(false);
+    }
+  });
+
+  it('treats printing/pausing style states as active', () => {
+    for (const state of ['printing', 'running', 'paused', 'pause', 'prepare', 'slicing', 'auto_bed_leveling']) {
+      expect(isActivePrintState(state)).toBe(true);
+    }
   });
 });

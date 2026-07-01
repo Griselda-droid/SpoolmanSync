@@ -465,6 +465,7 @@ ${trayEntityIds.map(id => `        - ${id}`).join('\n')}
         name: "{{ name }}"
         material: "{{ material }}"
         color: "{{ color }}"
+        current_print_state: "{{ states('${entities.current_stage}') }}"
   mode: queued
   max: 10
 `;
@@ -725,6 +726,7 @@ ${trayEntityIds.map(id => `        - ${id}`).join('\n')}
         name: "{{ name }}"
         material: "{{ material }}"
         color: "{{ color }}"
+        current_print_state: "{{ states('${entities.current_stage}') }}"
   mode: queued
   max: 10
 `;
@@ -907,7 +909,8 @@ rest_command:
         "tray_uuid": "{{ tray_uuid }}",
         "name": "{{ name }}",
         "material": "{{ material }}",
-        "color": "{{ color }}"
+        "color": "{{ color }}",
+        "current_print_state": "{{ current_print_state }}"
       }
 
 # Template sensors for filament tracking

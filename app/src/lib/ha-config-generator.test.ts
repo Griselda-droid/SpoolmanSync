@@ -130,6 +130,18 @@ describe('generateHAConfig — output is well-formed YAML', () => {
     }
   });
 
+  it('tray trigger passes the current print state to the tray-change webhook', () => {
+    for (const printer of [bambuPrinter(), crealityPrinter()]) {
+      const { automationsYaml, configurationAdditions } = generateHAConfig([printer], 'http://hook', 'http://hook');
+      const parsed = parseYaml(automationsYaml);
+      const trayChange = parsed.find((a: { id: string }) => a.id === `spoolmansync_tray_change_${printer.prefix}`);
+      const restAction = trayChange.actions.find((a: { action?: string }) => a.action === 'rest_command.spoolmansync_tray_change');
+
+      expect(restAction.data.current_print_state).toContain('states(');
+      expect(configurationAdditions).toContain('"current_print_state": "{{ current_print_state }}"');
+    }
+  });
+
   it('returns empty config for no printers', () => {
     const cfg = generateHAConfig([], 'http://hook', 'http://hook');
     expect(cfg.automationsYaml).toBe('[]');

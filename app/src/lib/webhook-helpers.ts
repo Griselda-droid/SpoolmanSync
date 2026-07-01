@@ -63,3 +63,19 @@ export function classifyTrayState(name: string | null | undefined): 'transient' 
   }
   return 'present';
 }
+
+/**
+ * Returns true when the printer stage/status represents an active or pausing
+ * print. Empty-tray events during these states can be Bambu AMS runout / auto-
+ * refill transitions; clearing the old tray assignment immediately can make the
+ * subsequent usage flush unable to find the ran-out spool.
+ */
+export function isActivePrintState(state: string | null | undefined): boolean {
+  const normalized = (state ?? '').toString().trim().toLowerCase();
+
+  if (!normalized || ['idle', 'finished', 'completed', 'complete', 'offline', 'off', 'none', 'unknown', 'unavailable'].includes(normalized)) {
+    return false;
+  }
+
+  return true;
+}
