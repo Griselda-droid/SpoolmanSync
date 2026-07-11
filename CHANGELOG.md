@@ -5,6 +5,13 @@ All notable changes to SpoolmanSync will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.4] - 2026-07-11
+
+> Upgrade note: existing users should re-run Auto-configure / regenerate their Home Assistant automations so tray-change webhooks include the current print state. Without regenerating, the fix below stays inactive (behavior is unchanged, nothing breaks).
+
+### Fixed
+- Filament usage is no longer lost during an AMS runout / auto-refill mid-print (#71). When a tray ran empty while a print was still active, the ran-out spool could be auto-unassigned before its accumulated usage was flushed, so the deduction was dropped and only the replacement spool was charged. Tray-change events during an active print are now treated as possible runout transitions and the assignment is preserved, so the subsequent usage flush still matches and deducts from the correct spool. Empty-tray auto-clear continues to work as before when the printer is idle, finished, or offline.
+
 ## [1.6.3] - 2026-06-25
 
 > Upgrade note (embedded mode): pull the latest images and recreate the containers, e.g. `docker compose pull && docker compose --profile embedded up -d`. On startup the bundled Home Assistant then refreshes ha-bambulab to the version shipped in the image.
