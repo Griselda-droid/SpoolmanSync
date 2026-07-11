@@ -6,7 +6,7 @@ import { spoolEvents, SPOOL_UPDATED, SpoolUpdateEvent } from '@/lib/events';
 import { createActivityLog } from '@/lib/activity-log';
 import { checkAndUpdateAlerts } from '@/lib/alerts';
 import { getWebhookSecret, isWebhookAuthEnabled, tokensMatch, WEBHOOK_TOKEN_HEADER } from '@/lib/webhook-secret';
-import { isValidTrayUuid, lengthToWeight, classifyTrayState } from '@/lib/webhook-helpers';
+import { isValidTrayUuid, lengthToWeight, classifyTrayState, isActivePrintState } from '@/lib/webhook-helpers';
 
 /**
  * Webhook endpoint for Home Assistant automations
@@ -216,7 +216,7 @@ export async function POST(request: NextRequest) {
 
     // Handle tray_change event - auto-assign spool by serial number or handle empty tray
     if (event === 'tray_change') {
-      const { tray_entity_id, tray_uuid, name, material } = body;
+      const { tray_entity_id, tray_uuid, name, material, current_print_state } = body;
       const spools = await client.getSpools();
 
       // Resolve entity_id to unique_id for matching and assignment
@@ -244,6 +244,20 @@ export async function POST(request: NextRequest) {
             details: { trayId: tray_entity_id, reason: 'auto_clear_disabled' },
           });
           return NextResponse.json({ status: 'ignored', reason: 'auto_clear_disabled' });
+        }
+
+        // During an active print, an empty tray can be a real AMS runout event.
+        // Preserve the assignment so the Update Spool automation can flush the
+        // old active tray's accumulated usage against the ran-out spool before
+        // any cleanup happens. Otherwise an auto-unassign here makes the
+        // subsequent spool_usage webhook unable to find the old spool.
+        if (isActivePrintState(current_print_state)) {
+          await createActivityLog({
+            type: 'tray_change_ignored',
+            message: `Detected empty tray ${tray_entity_id} while printer is ${current_print_state} — assignment preserved for usage accounting`,
+            details: { trayId: tray_entity_id, reason: 'active_print_empty_tray', currentPrintState: current_print_state },
+          });
+          return NextResponse.json({ status: 'ignored', reason: 'active_print_empty_tray' });
         }
 
         // Defense-in-depth: re-query the live HA state before unassigning. A 4-5s
@@ -437,6 +451,7 @@ export async function GET() {
           tray_uuid: '...',
           color: '#FFFFFF',
           material: 'PLA',
+          current_print_state: 'printing',
         },
       },
     },
