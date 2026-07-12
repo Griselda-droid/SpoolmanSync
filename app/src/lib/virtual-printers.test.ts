@@ -3,8 +3,23 @@ import {
   virtualSlotKey,
   nextSlotNumber,
   virtualPrintersToHAPrinters,
+  rekeyVirtualAssignments,
   VIRTUAL_KEY_PREFIX,
 } from './virtual-printers';
+import type { SpoolmanClient } from './api/spoolman';
+
+/** Minimal fake SpoolmanClient that records updateSpool calls. */
+function fakeClient(spools: Array<Record<string, unknown>>) {
+  const updates: Array<{ id: number; data: Record<string, unknown> }> = [];
+  const client = {
+    getSpools: async () => spools,
+    updateSpool: async (id: number, data: Record<string, unknown>) => {
+      updates.push({ id, data });
+      return {} as unknown;
+    },
+  } as unknown as SpoolmanClient;
+  return { client, updates };
+}
 
 describe('virtualSlotKey (issue #70 — friendly key)', () => {
   it('builds a readable underscore-delimited key mirroring real AMS keys', () => {
@@ -64,5 +79,58 @@ describe('virtualPrintersToHAPrinters (issue #67/#70)', () => {
     const [hp] = virtualPrintersToHAPrinters([{ id: 'p2', name: 'Empty', slots: [] }]);
     expect(hp.ams_units).toEqual([]);
     expect(hp.external_spools).toEqual([]);
+  });
+});
+
+describe('rekeyVirtualAssignments — key + location remap on rename', () => {
+  it('moves active_tray to the new key and follows location when it matches the old name', async () => {
+    const { client, updates } = fakeClient([
+      {
+        id: 7,
+        extra: { active_tray: JSON.stringify('virtual_Dry Box A_tray_1') },
+        location: 'Dry Box A',
+      },
+    ]);
+
+    await rekeyVirtualAssignments(client, [
+      { oldKey: 'virtual_Dry Box A_tray_1', newKey: 'virtual_Dry Box B_tray_1', oldLocation: 'Dry Box A', newLocation: 'Dry Box B' },
+    ]);
+
+    expect(updates).toHaveLength(1);
+    const data = updates[0].data as { extra: Record<string, string>; location?: string };
+    expect(data.extra.active_tray).toBe(JSON.stringify('virtual_Dry Box B_tray_1'));
+    expect(data.location).toBe('Dry Box B');
+  });
+
+  it('re-keys but leaves a manually-changed location alone', async () => {
+    const { client, updates } = fakeClient([
+      {
+        id: 8,
+        extra: { active_tray: JSON.stringify('virtual_Dry Box A_tray_1') },
+        location: 'Somewhere else',
+      },
+    ]);
+
+    await rekeyVirtualAssignments(client, [
+      { oldKey: 'virtual_Dry Box A_tray_1', newKey: 'virtual_Dry Box B_tray_1', oldLocation: 'Dry Box A', newLocation: 'Dry Box B' },
+    ]);
+
+    const data = updates[0].data as { extra: Record<string, string>; location?: string };
+    expect(data.extra.active_tray).toBe(JSON.stringify('virtual_Dry Box B_tray_1'));
+    expect('location' in data).toBe(false);
+  });
+
+  it('does not send location when no location remap is provided (sync off)', async () => {
+    const { client, updates } = fakeClient([
+      { id: 9, extra: { active_tray: JSON.stringify('virtual_Dry Box A_tray_1') }, location: 'Dry Box A' },
+    ]);
+
+    await rekeyVirtualAssignments(client, [
+      { oldKey: 'virtual_Dry Box A_tray_1', newKey: 'virtual_Dry Box B_tray_1' },
+    ]);
+
+    const data = updates[0].data as { extra: Record<string, string>; location?: string };
+    expect(data.extra.active_tray).toBe(JSON.stringify('virtual_Dry Box B_tray_1'));
+    expect('location' in data).toBe(false);
   });
 });

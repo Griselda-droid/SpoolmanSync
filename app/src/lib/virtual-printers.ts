@@ -134,28 +134,45 @@ export function withVirtualLock<T>(fn: () => Promise<T>): Promise<T> {
  */
 export async function rekeyVirtualAssignments(
   client: SpoolmanClient,
-  remap: Array<{ oldKey: string; newKey: string }>,
+  remap: Array<{ oldKey: string; newKey: string; oldLocation?: string; newLocation?: string }>,
 ): Promise<void> {
   const pairs = remap.filter((r) => r.oldKey !== r.newKey);
   if (pairs.length === 0) return;
-  const byOld = new Map(pairs.map((r) => [JSON.stringify(r.oldKey), r.newKey]));
+  const byOld = new Map(pairs.map((r) => [JSON.stringify(r.oldKey), r]));
   const spools = await client.getSpools(true); // include archived so history stays linked
 
   // All-or-nothing: if any spool fails to update, roll back the ones already
   // moved so a rename/migration never half-applies and leaves orphans.
-  const moved: Array<{ id: number; extra: Record<string, string> }> = [];
+  // `location` is captured/restored only when we actually change it, so a
+  // manually-set location is never touched.
+  const moved: Array<{ id: number; extra: Record<string, string>; location?: string | null }> = [];
   try {
     for (const spool of spools) {
       const raw = spool.extra?.['active_tray'];
       if (!raw || !byOld.has(raw)) continue;
+      const entry = byOld.get(raw)!;
       const originalExtra: Record<string, string> = { ...(spool.extra || {}) };
-      const newExtra: Record<string, string> = { ...originalExtra, active_tray: JSON.stringify(byOld.get(raw)!) };
-      await client.updateSpool(spool.id, { extra: newExtra });
-      moved.push({ id: spool.id, extra: originalExtra });
+      const newExtra: Record<string, string> = { ...originalExtra, active_tray: JSON.stringify(entry.newKey) };
+      const data: Record<string, unknown> = { extra: newExtra };
+
+      // Follow the location too, but only if it still equals the label we set
+      // (i.e. the old virtual-printer name). A user-changed location is left as-is.
+      const changesLocation =
+        entry.newLocation !== undefined &&
+        entry.oldLocation !== undefined &&
+        spool.location === entry.oldLocation;
+      if (changesLocation) data.location = entry.newLocation;
+
+      await client.updateSpool(spool.id, data);
+      moved.push({ id: spool.id, extra: originalExtra, location: changesLocation ? (spool.location ?? '') : undefined });
     }
   } catch (err) {
     for (const m of moved) {
-      try { await client.updateSpool(m.id, { extra: m.extra }); } catch { /* best-effort rollback */ }
+      try {
+        const rollback: Record<string, unknown> = { extra: m.extra };
+        if (m.location !== undefined) rollback.location = m.location;
+        await client.updateSpool(m.id, rollback);
+      } catch { /* best-effort rollback */ }
     }
     throw err;
   }

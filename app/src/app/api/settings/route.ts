@@ -50,6 +50,7 @@ export async function GET() {
       const qrBaseUrlSetting = await prisma.settings.findUnique({ where: { key: 'qr_base_url' } });
       const showLocationSetting = await prisma.settings.findUnique({ where: { key: 'show_spool_location' } });
       const neverAutoClearSetting = await prisma.settings.findUnique({ where: { key: 'never_auto_clear_tray' } });
+      const syncLocationSetting = await prisma.settings.findUnique({ where: { key: 'sync_spoolman_location' } });
       const webhookAuthEnabled = await isWebhookAuthEnabled();
 
       return NextResponse.json({
@@ -67,6 +68,7 @@ export async function GET() {
         qrBaseUrl: qrBaseUrlSetting?.value || '',
         showSpoolLocation: showLocationSetting?.value === 'true',
         neverAutoClearTray: neverAutoClearSetting?.value === 'true',
+        syncSpoolmanLocation: syncLocationSetting?.value === 'true',
         webhookConfigured: webhookAuthEnabled,
       });
     }
@@ -252,6 +254,7 @@ export async function GET() {
     const qrBaseUrlSetting = await prisma.settings.findUnique({ where: { key: 'qr_base_url' } });
     const showLocationSetting = await prisma.settings.findUnique({ where: { key: 'show_spool_location' } });
     const neverAutoClearSetting = await prisma.settings.findUnique({ where: { key: 'never_auto_clear_tray' } });
+    const syncLocationSetting = await prisma.settings.findUnique({ where: { key: 'sync_spoolman_location' } });
     const webhookAuthEnabled = await isWebhookAuthEnabled();
 
     return NextResponse.json({
@@ -265,6 +268,7 @@ export async function GET() {
       qrBaseUrl: qrBaseUrlSetting?.value || '',
       showSpoolLocation: showLocationSetting?.value === 'true',
       neverAutoClearTray: neverAutoClearSetting?.value === 'true',
+      syncSpoolmanLocation: syncLocationSetting?.value === 'true',
       webhookConfigured: webhookAuthEnabled,
     });
   } catch (error) {
@@ -344,6 +348,19 @@ export async function POST(request: NextRequest) {
       await prisma.settings.upsert({
         where: { key: 'show_spool_location' },
         create: { key: 'show_spool_location', value: String(enabled) },
+        update: { value: String(enabled) },
+      });
+      return NextResponse.json({ success: true });
+    }
+
+    if (type === 'sync_spoolman_location') {
+      // When enabled, assigning a spool to a tray (real AMS/CFS or virtual
+      // printer) also writes Spoolman's native `location` field, and unassigning
+      // clears it (guarded so manual locations survive). Defaults off.
+      const enabled = body.enabled === true;
+      await prisma.settings.upsert({
+        where: { key: 'sync_spoolman_location' },
+        create: { key: 'sync_spoolman_location', value: String(enabled) },
         update: { value: String(enabled) },
       });
       return NextResponse.json({ success: true });
