@@ -5,6 +5,14 @@ All notable changes to SpoolmanSync will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.5] - 2026-07-11
+
+### Added
+- Optional two-way sync between spool locations and Spoolman's native `location` field (opt-in; off by default). Enable "Sync spool locations to Spoolman" in Settings and:
+  - Assigning a spool to a real AMS/CFS tray sets its Spoolman location to `"<Printer> - <AMS> Tray <N>"` (or `"<Printer> - External"`), and assigning to a virtual printer (dry box/shelf) sets it to the virtual printer's name — so Spoolman reporting shows where every spool is, whether loaded in a printer or in storage.
+  - When creating a virtual printer, existing Spoolman locations are offered as a pick-list so names line up with the native location field.
+  - Unassigning a spool clears the location, but only when it still matches the label SpoolmanSync set — a location you set by hand is never overwritten. The feature is a no-op (and safe) when Home Assistant is unreachable, and only affects spools as they are assigned or unassigned.
+
 ## [1.6.4] - 2026-07-11
 
 > Upgrade note: existing users should re-run Auto-configure / regenerate their Home Assistant automations so tray-change webhooks include the current print state. Without regenerating, the fix below stays inactive (behavior is unchanged, nothing breaks).
