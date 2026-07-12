@@ -118,9 +118,18 @@ export const DEFAULT_ENABLED_FILTERS = ['material', 'vendor'];
  */
 export type EntityIdResolver = (entityId: string) => Promise<string>;
 
+/**
+ * Resolver that maps a tray key (unique_id, entity_id, or virtual slot key) to a
+ * human-readable Spoolman `location` label. Returns '' when the tray can't be
+ * resolved (in which case the location field is left untouched). Provided by
+ * callers only when location sync is enabled — see makeLocationResolver().
+ */
+export type LocationResolver = (trayKey: string) => Promise<string>;
+
 export class SpoolmanClient {
   private baseUrl: string;
   private entityIdResolver: EntityIdResolver | null = null;
+  private locationResolver: LocationResolver | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
@@ -136,6 +145,17 @@ export class SpoolmanClient {
    */
   setEntityIdResolver(resolver: EntityIdResolver): void {
     this.entityIdResolver = resolver;
+  }
+
+  /**
+   * Set a resolver that maps a tray key to a Spoolman `location` label. When set,
+   * assignSpoolToTray writes the resolved label into the native `location` field,
+   * and unassignSpoolFromTray clears it — but only if it still matches the label
+   * we set (so a manually-set location is never destroyed). When not set (sync
+   * disabled), the `location` field is left completely untouched.
+   */
+  setLocationResolver(resolver: LocationResolver): void {
+    this.locationResolver = resolver;
   }
 
   /**
@@ -249,12 +269,20 @@ export class SpoolmanClient {
     }
     newExtra['active_tray'] = JSON.stringify(trayId);
 
+    // Build the PATCH body. `location` is a native top-level field (NOT in extra).
+    const body: Record<string, unknown> = { extra: await this.sanitizeExtra(newExtra) };
+
+    // If location sync is enabled, set the native location to reflect this tray.
+    // An unresolved tray ('') leaves location untouched.
+    if (this.locationResolver) {
+      const label = await this.locationResolver(trayId);
+      if (label) body.location = label;
+    }
+
     // Assign the new spool
     return this.fetch(`/spool/${spoolId}`, {
       method: 'PATCH',
-      body: JSON.stringify({
-        extra: await this.sanitizeExtra(newExtra),
-      }),
+      body: JSON.stringify(body),
     });
   }
 
@@ -264,6 +292,10 @@ export class SpoolmanClient {
   async unassignSpoolFromTray(spoolId: number): Promise<Spool> {
     // Get current spool to preserve other extra fields
     const spool = await this.getSpool(spoolId);
+
+    // Capture the tray we're leaving (before clearing it) so we can decide
+    // whether to also clear the native location field.
+    const oldTrayRaw = spool.extra?.['active_tray'];
 
     // Build new extra object with active_tray set to empty string
     // Spoolman's PATCH replaces the entire extra object, so we need to include
@@ -280,12 +312,30 @@ export class SpoolmanClient {
     // Spoolman requires extra field values to be valid JSON
     newExtra['active_tray'] = JSON.stringify('');
 
+    const body: Record<string, unknown> = { extra: await this.sanitizeExtra(newExtra) };
+
+    // GUARDED location clear: only wipe `location` if it still equals the label
+    // we would have set for the tray being left. This means a location the user
+    // set (or changed) by hand is never destroyed by an unassign.
+    if (this.locationResolver && spool.location) {
+      let oldTray = '';
+      if (oldTrayRaw) {
+        try {
+          const parsed = JSON.parse(oldTrayRaw);
+          if (typeof parsed === 'string') oldTray = parsed;
+        } catch { /* not JSON — leave blank, we won't clear */ }
+      }
+      if (oldTray) {
+        const label = await this.locationResolver(oldTray);
+        // Spoolman's location is `str | None`; null truly unsets it.
+        if (label && label === spool.location) body.location = null;
+      }
+    }
+
     // Send the updated extra object with empty active_tray
     return this.fetch<Spool>(`/spool/${spoolId}`, {
       method: 'PATCH',
-      body: JSON.stringify({
-        extra: await this.sanitizeExtra(newExtra),
-      }),
+      body: JSON.stringify(body),
     });
   }
 

@@ -98,6 +98,7 @@ function SettingsContent() {
 
   // Sync behavior settings
   const [neverAutoClearTray, setNeverAutoClearTray] = useState(false);
+  const [syncSpoolmanLocation, setSyncSpoolmanLocation] = useState(false);
 
   // QR base URL state
   const [qrBaseUrl, setQrBaseUrl] = useState('');
@@ -118,6 +119,7 @@ function SettingsContent() {
   const [virtualPrinters, setVirtualPrinters] = useState<VirtualPrinter[]>([]);
   const [newVpName, setNewVpName] = useState('');
   const [newVpSlotCount, setNewVpSlotCount] = useState(1);
+  const [existingLocations, setExistingLocations] = useState<string[]>([]);
   const [creatingVp, setCreatingVp] = useState(false);
   const [mutatingVp, setMutatingVp] = useState<string | null>(null);
   const [editingVpName, setEditingVpName] = useState<Record<string, string>>({});
@@ -125,6 +127,7 @@ function SettingsContent() {
   useEffect(() => {
     fetchSettings();
     fetchVirtualPrinters();
+    fetchExistingLocations();
 
     // Handle OAuth callback messages
     const success = searchParams.get('success');
@@ -193,6 +196,9 @@ function SettingsContent() {
       }
       if (data.neverAutoClearTray !== undefined) {
         setNeverAutoClearTray(data.neverAutoClearTray);
+      }
+      if (data.syncSpoolmanLocation !== undefined) {
+        setSyncSpoolmanLocation(data.syncSpoolmanLocation);
       }
     } catch {
       toast.error('Failed to load settings');
@@ -499,6 +505,18 @@ function SettingsContent() {
       }
     } catch {
       // Silently fail
+    }
+  };
+
+  const fetchExistingLocations = async () => {
+    try {
+      const res = await fetch('/api/spoolman/locations');
+      if (res.ok) {
+        const data = await res.json();
+        setExistingLocations(Array.isArray(data.locations) ? data.locations : []);
+      }
+    } catch {
+      // Silently fail — suggestions are optional
     }
   };
 
@@ -1091,7 +1109,20 @@ function SettingsContent() {
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') createVirtualPrinter();
                         }}
+                        list="existing-spoolman-locations"
                       />
+                      {existingLocations.length > 0 && (
+                        <datalist id="existing-spoolman-locations">
+                          {existingLocations.map((loc) => (
+                            <option key={loc} value={loc} />
+                          ))}
+                        </datalist>
+                      )}
+                      {existingLocations.length > 0 && (
+                        <p className="text-xs text-muted-foreground">
+                          Tip: pick an existing Spoolman location to keep names in sync.
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label htmlFor="new-vp-slots">Slots</Label>
@@ -1222,6 +1253,37 @@ function SettingsContent() {
                       </Label>
                       <p className="text-xs text-muted-foreground">
                         When enabled, SpoolmanSync will not remove a spool from a tray when the printer briefly reports it empty. Useful for LAN-only setups where the AMS occasionally reports false empty states.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-3">
+                    <Checkbox
+                      id="sync-spoolman-location"
+                      checked={syncSpoolmanLocation}
+                      onCheckedChange={async (checked) => {
+                        const enabled = checked === true;
+                        setSyncSpoolmanLocation(enabled);
+                        try {
+                          const res = await fetch('/api/settings', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ type: 'sync_spoolman_location', enabled }),
+                          });
+                          if (!res.ok) throw new Error();
+                          toast.success(enabled ? 'Spool locations will sync to Spoolman' : 'Spool location sync disabled');
+                        } catch {
+                          setSyncSpoolmanLocation(!enabled);
+                          toast.error('Failed to save setting');
+                        }
+                      }}
+                    />
+                    <div>
+                      <Label htmlFor="sync-spoolman-location" className="text-sm font-medium cursor-pointer">
+                        Sync spool locations to Spoolman
+                      </Label>
+                      <p className="text-xs text-muted-foreground">
+                        When enabled, assigning a spool to a tray writes Spoolman&apos;s native location field — real printers as &quot;Printer - AMS 1 Tray 3&quot; and virtual printers as their name — so Spoolman reporting shows where every spool is (in a printer or in storage). Only spools you assign/unassign are affected; a location you set by hand is left alone. Applies to future assignments (existing ones update as spools are re-assigned).
                       </p>
                     </div>
                   </div>

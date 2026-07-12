@@ -14,13 +14,19 @@ import {
 } from '@/lib/virtual-printers';
 import { SpoolmanClient } from '@/lib/api/spoolman';
 import { createActivityLog } from '@/lib/activity-log';
+import { isLocationSyncEnabled, makeLocationResolver, virtualLocationLabel } from '@/lib/spool-location';
 
 const MAX_SLOTS = 16;
 const MAX_NAME_LENGTH = 100;
 
 async function getSpoolmanClient(): Promise<SpoolmanClient | null> {
   const conn = await prisma.spoolmanConnection.findFirst();
-  return conn ? new SpoolmanClient(conn.url) : null;
+  if (!conn) return null;
+  const client = new SpoolmanClient(conn.url);
+  // Wire location sync so slot/printer removal guard-clears the location field.
+  const locationResolver = await makeLocationResolver();
+  if (locationResolver) client.setLocationResolver(locationResolver);
+  return client;
 }
 
 /** 503 returned for operations that must re-key/clear Spoolman but have no client. */
@@ -139,9 +145,16 @@ export async function PATCH(request: NextRequest) {
           // NOT diverge the model from the stored assignments.
           if (!client) return spoolmanRequired();
           const oldName = printer.name;
+          // When location sync is on, a rename also moves the location string
+          // (old name → new name) for spools whose location still matches.
+          const syncLocation = await isLocationSyncEnabled();
+          const locationRemap = syncLocation
+            ? { oldLocation: virtualLocationLabel(oldName), newLocation: virtualLocationLabel(newName) }
+            : {};
           const remap = printer.slots.map((s) => ({
             oldKey: virtualSlotKey(oldName, s.number),
             newKey: virtualSlotKey(newName, s.number),
+            ...locationRemap,
           }));
           await rekeyVirtualAssignments(client, remap); // atomic: rolls back + throws on failure
           printer.name = newName;

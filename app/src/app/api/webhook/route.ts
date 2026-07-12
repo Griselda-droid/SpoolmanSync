@@ -7,6 +7,7 @@ import { createActivityLog } from '@/lib/activity-log';
 import { checkAndUpdateAlerts } from '@/lib/alerts';
 import { getWebhookSecret, isWebhookAuthEnabled, tokensMatch, WEBHOOK_TOKEN_HEADER } from '@/lib/webhook-secret';
 import { isValidTrayUuid, lengthToWeight, classifyTrayState, isActivePrintState } from '@/lib/webhook-helpers';
+import { makeLocationResolver } from '@/lib/spool-location';
 
 /**
  * Webhook endpoint for Home Assistant automations
@@ -77,6 +78,12 @@ export async function POST(request: NextRequest) {
     // This prevents race conditions where concurrent Spoolman API calls
     // revert extra fields to stale data containing entity_ids.
     client.setEntityIdResolver(resolveToUniqueId);
+
+    // Wire up location sync (no-op unless the user enabled it). When enabled,
+    // auto-assign/auto-clear will also keep Spoolman's native location field in
+    // step with the tray the spool is on.
+    const locationResolver = await makeLocationResolver();
+    if (locationResolver) client.setLocationResolver(locationResolver);
 
     // Handle spool_usage event - deduct filament weight from spool
     if (event === 'spool_usage') {
