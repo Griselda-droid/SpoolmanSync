@@ -5,7 +5,9 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { AddSpoolDialog } from '@/components/add-spool-dialog';
 import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'Dashboard' },
@@ -19,6 +21,7 @@ const navItems = [
 export function Nav() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [addSpoolOpen, setAddSpoolOpen] = useState(false);
 
   return (
     <header className="border-b bg-background">
@@ -63,6 +66,23 @@ export function Nav() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAddSpoolOpen(true)}
+            className="hidden sm:inline-flex"
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            Add Spool
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setAddSpoolOpen(true)}
+            className="sm:hidden"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
           <ThemeToggle />
 
           {/* Mobile menu button */}
@@ -109,9 +129,28 @@ export function Nav() {
               {item.label}
             </Link>
           ))}
+          <button
+            onClick={() => {
+              setMobileMenuOpen(false);
+              setAddSpoolOpen(true);
+            }}
+            className="block w-full text-left py-2 text-sm font-medium transition-colors hover:text-primary text-muted-foreground"
+          >
+            <Plus className="inline mr-1 h-4 w-4" />
+            Add Spool
+          </button>
           </div>
         </nav>
       )}
+
+      <AddSpoolDialog
+        open={addSpoolOpen}
+        onOpenChange={setAddSpoolOpen}
+        onSuccess={() => {
+          // Refresh the current page to show the new spool
+          window.location.reload();
+        }}
+      />
     </header>
   );
 }

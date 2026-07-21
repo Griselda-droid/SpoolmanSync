@@ -478,6 +478,23 @@ export class SpoolmanClient {
   }
 
   /**
+   * Create a new spool
+   */
+  async createSpool(data: {
+    filament_id: number;
+    initial_weight: number;
+    spool_weight?: number;
+    location?: string;
+    lot_nr?: string;
+    comment?: string;
+  }): Promise<Spool> {
+    return this.fetch('/spool', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
    * Ensure all required extra fields exist in Spoolman
    * This is required for SpoolmanSync to track tray assignments and barcode scanning
    */
