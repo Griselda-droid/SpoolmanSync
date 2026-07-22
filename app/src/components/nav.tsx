@@ -6,22 +6,26 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { AddSpoolDialog } from '@/components/add-spool-dialog';
+import { LanguageSwitcher } from '@/components/language-switcher';
+import { useI18n } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 
-const navItems = [
-  { href: '/', label: 'Dashboard' },
-  { href: '/scan', label: 'Scan' },
-  { href: '/reports', label: 'Reports' },
-  { href: '/automations', label: 'Automations' },
-  { href: '/settings', label: 'Settings' },
-  { href: '/logs', label: 'Logs' },
-];
-
 export function Nav() {
+  const { t } = useI18n();
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [addSpoolOpen, setAddSpoolOpen] = useState(false);
+
+  const navItems = [
+    { href: '/', label: t('nav.dashboard') },
+    { href: '/spools', label: t('nav.spools') },
+    { href: '/scan', label: t('nav.scan') },
+    { href: '/reports', label: t('nav.reports') },
+    { href: '/automations', label: t('nav.automations') },
+    { href: '/settings', label: t('nav.settings') },
+    { href: '/logs', label: t('nav.logs') },
+  ];
 
   return (
     <header className="border-b bg-background">
@@ -66,6 +70,7 @@ export function Nav() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          <LanguageSwitcher />
           <Button
             variant="outline"
             size="sm"
@@ -73,7 +78,7 @@ export function Nav() {
             className="hidden sm:inline-flex"
           >
             <Plus className="mr-1 h-4 w-4" />
-            Add Spool
+            {t('nav.addSpool')}
           </Button>
           <Button
             variant="outline"

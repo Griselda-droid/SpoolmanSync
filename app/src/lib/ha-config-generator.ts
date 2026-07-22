@@ -75,7 +75,7 @@ export function generateHAConfig(
         console.warn(`[SpoolmanSync] Could not find print_progress entity for Creality printer ${prefix}.`);
       }
       if (missingEntities.length > 0) {
-        console.warn(`[SpoolmanSync] Missing entities for ${prefix}: ${missingEntities.join(', ')}. Please report at https://github.com/gibz104/SpoolmanSync/issues`);
+        console.warn(`[SpoolmanSync] Missing entities for ${prefix}: ${missingEntities.join(', ')}. Please report at https://github.com/Griselda-droid/SpoolmanSync/issues`);
       }
 
       const discoveredEntities: LocalizedEntities = {
@@ -106,7 +106,7 @@ export function generateHAConfig(
         console.warn(`[SpoolmanSync] Could not find print_progress entity for printer ${prefix}. Filament usage tracking may not work.`);
       }
       if (missingEntities.length > 0) {
-        console.warn(`[SpoolmanSync] Missing entities for ${prefix}: ${missingEntities.join(', ')}. Please report at https://github.com/gibz104/SpoolmanSync/issues`);
+        console.warn(`[SpoolmanSync] Missing entities for ${prefix}: ${missingEntities.join(', ')}. Please report at https://github.com/Griselda-droid/SpoolmanSync/issues`);
       }
 
       const discoveredEntities: LocalizedEntities = {

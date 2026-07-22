@@ -2,9 +2,9 @@
 
 **Automatic filament tracking for Bambu Lab and Creality printers with Spoolman**
 
-![Build Status](https://github.com/gibz104/SpoolmanSync/actions/workflows/docker-publish.yml/badge.svg)
-[![Ko-Fi](https://img.shields.io/badge/Ko--fi-Support%20this%20project-ff5f5f?logo=ko-fi)](https://ko-fi.com/gibz104)
-[![GitHub stars](https://img.shields.io/github/stars/gibz104/SpoolmanSync?style=social)](https://github.com/gibz104/SpoolmanSync)
+![Build Status](https://github.com/Griselda-droid/SpoolmanSync/actions/workflows/docker-publish.yml/badge.svg)
+[![Ko-Fi](https://img.shields.io/badge/Ko--fi-Support%20this%20project-ff5f5f?logo=ko-fi)](https://ko-fi.com/Griselda-droid)
+[![GitHub stars](https://img.shields.io/github/stars/Griselda-droid/SpoolmanSync?style=social)](https://github.com/Griselda-droid/SpoolmanSync)
 
 SpoolmanSync is a web app that automatically tracks which filament spools are loaded in your 3D printer's AMS/CFS and keeps [Spoolman](https://github.com/Donkie/Spoolman) inventory in sync — including weight deducted per print. Works with **Bambu Lab** (X1C, P1S, A1, H2D, AMS, AMS 2 Pro, AMS HT) and **Creality** (K1, K2, K2 Plus, Hi, Ender 3 V3 with CFS) printers, and supports filament from any vendor.
 
@@ -30,7 +30,7 @@ Pick the option that matches your setup:
 ### Option 1: Home Assistant Add-on (recommended for HA OS / Supervised)
 
 1. **Settings → Add-ons → Add-on Store → ⋮ → Repositories**
-2. Add `https://github.com/gibz104/SpoolmanSync`
+2. Add `https://github.com/Griselda-droid/SpoolmanSync`
 3. Install **SpoolmanSync**, start it, and enable **Show in sidebar**
 4. Open from the sidebar and configure Spoolman URL in Settings
 
@@ -41,7 +41,7 @@ Requires the [ha-bambulab](https://github.com/greghesp/ha-bambulab) integration 
 Best for users without Home Assistant. Includes a pre-configured HA with ha-bambulab and ha_creality_ws already installed.
 
 ```bash
-curl -O https://raw.githubusercontent.com/gibz104/SpoolmanSync/main/docker-compose.prebuilt.yml
+curl -O https://raw.githubusercontent.com/Griselda-droid/SpoolmanSync/main/docker-compose.prebuilt.yml
 docker compose -f docker-compose.prebuilt.yml --profile embedded up -d
 ```
 
@@ -52,7 +52,7 @@ Open http://localhost:3000, then in **Settings** click **Add Printer** and choos
 For users who already run Home Assistant with ha-bambulab or ha_creality_ws installed.
 
 ```bash
-curl -O https://raw.githubusercontent.com/gibz104/SpoolmanSync/main/docker-compose.prebuilt.yml
+curl -O https://raw.githubusercontent.com/Griselda-droid/SpoolmanSync/main/docker-compose.prebuilt.yml
 docker compose -f docker-compose.prebuilt.yml --profile external up -d
 ```
 
@@ -99,9 +99,9 @@ Alerts fire only when you're on your *last* spool of a group — no noise from p
 
 ## Links
 
-- [GitHub Issues](https://github.com/gibz104/SpoolmanSync/issues)
+- [GitHub Issues](https://github.com/Griselda-droid/SpoolmanSync/issues)
 - [Home Assistant Community post](https://community.home-assistant.io/t/spoolmansync-automatic-filament-tracking-for-bambu-lab-printers-beginner-friendly/977383)
-- [Docker Hub](https://hub.docker.com/r/gibz104/spoolmansync)
+- [Docker Hub](https://hub.docker.com/r/Griselda-droid/spoolmansync)
 
 ## License
 

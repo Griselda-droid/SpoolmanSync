@@ -1,7 +1,7 @@
 # SpoolmanSync - Pre-built Docker Images
 #
 # This compose file uses pre-built images from GitHub Container Registry.
-# For users who prefer Docker Hub, replace ghcr.io/gibz104 with docker.io/gibz104
+# For users who prefer Docker Hub, replace ghcr.io/griselda-droid with docker.io/griselda-droid
 #
 # Choose a profile based on your setup:
 #
@@ -14,7 +14,7 @@
 
 # Shared app configuration
 x-app-common: &app-common
-  image: ghcr.io/gibz104/spoolmansync:latest
+  image: ghcr.io/griselda-droid/spoolmansync:latest
   container_name: spoolmansync-app
   ports:
     - "3000:3000"
@@ -49,7 +49,7 @@ services:
   # Bundled Home Assistant - only runs with embedded profile
   homeassistant:
     profiles: ["embedded"]
-    image: ghcr.io/gibz104/spoolmansync-homeassistant:latest
+    image: ghcr.io/griselda-droid/spoolmansync-homeassistant:latest
     container_name: spoolmansync-homeassistant
     ports:
       - "8123:8123"

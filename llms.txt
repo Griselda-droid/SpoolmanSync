@@ -43,14 +43,14 @@ Matching works by:
 
 ## Docs
 
-- [README - Installation and Setup](https://raw.githubusercontent.com/gibz104/SpoolmanSync/main/README.md): Complete setup for add-on, embedded, and external modes
+- [README - Installation and Setup](https://raw.githubusercontent.com/Griselda-droid/SpoolmanSync/main/README.md): Complete setup for add-on, embedded, and external modes
 
 ## Links
 
-- [GitHub Repository](https://github.com/gibz104/SpoolmanSync)
+- [GitHub Repository](https://github.com/Griselda-droid/SpoolmanSync)
 - [Home Assistant Community Post](https://community.home-assistant.io/t/spoolmansync-automatic-filament-tracking-for-bambu-lab-printers-beginner-friendly/977383)
-- [Docker Hub](https://hub.docker.com/r/gibz104/spoolmansync)
-- [GitHub Issues](https://github.com/gibz104/SpoolmanSync/issues)
+- [Docker Hub](https://hub.docker.com/r/Griselda-droid/spoolmansync)
+- [GitHub Issues](https://github.com/Griselda-droid/SpoolmanSync/issues)
 
 ## Optional Dependencies
 

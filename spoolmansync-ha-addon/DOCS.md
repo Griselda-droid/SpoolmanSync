@@ -7,7 +7,7 @@ Automatic filament tracking for Bambu Lab and Creality printers with Spoolman.
 1. Add this repository to your Home Assistant add-on store:
    - Go to **Settings** → **Add-ons** → **Add-on Store**
    - Click **⋮** (top right) → **Repositories**
-   - Add: `https://github.com/gibz104/SpoolmanSync`
+   - Add: `https://github.com/Griselda-droid/SpoolmanSync`
 2. Find **SpoolmanSync** and click **Install**
 3. Start the add-on and enable **Show in sidebar**
 
@@ -28,8 +28,8 @@ You can also configure the Spoolman URL from the SpoolmanSync Settings page afte
 
 ## Full Documentation
 
-For detailed usage instructions, feature guides, and troubleshooting, see the [SpoolmanSync documentation](https://github.com/gibz104/SpoolmanSync#readme).
+For detailed usage instructions, feature guides, and troubleshooting, see the [SpoolmanSync documentation](https://github.com/Griselda-droid/SpoolmanSync#readme).
 
 ## Support
 
-[GitHub Issues](https://github.com/gibz104/SpoolmanSync/issues)
+[GitHub Issues](https://github.com/Griselda-droid/SpoolmanSync/issues)
