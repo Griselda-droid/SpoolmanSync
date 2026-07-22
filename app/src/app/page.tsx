@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from 'sonner';
+import { useI18n } from '@/lib/i18n';
 import type { HAPrinter } from '@/lib/api/homeassistant';
 import type { Spool } from '@/lib/api/spoolman';
 import type { ActiveAlert } from '@/lib/alerts';
@@ -44,6 +45,7 @@ interface Settings {
 }
 
 export default function Dashboard() {
+  const { t } = useI18n();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [printers, setPrinters] = useState<PrinterWithSpools[]>([]);
   const [spools, setSpools] = useState<Spool[]>([]);
@@ -303,22 +305,22 @@ export default function Dashboard() {
         <main className="w-full max-w-7xl mx-auto py-6 px-3 sm:px-4 md:px-6">
           <Card>
             <CardHeader>
-              <CardTitle>Welcome to SpoolmanSync</CardTitle>
+              <CardTitle>{t('dashboard.welcome')}</CardTitle>
               <CardDescription>
-                Connect your Home Assistant and Spoolman to get started.
+                {t('dashboard.connectPrompt')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4">
                 <div className={`h-3 w-3 rounded-full ${settings?.homeassistant ? 'bg-green-500' : 'bg-gray-300'}`} />
-                <span>Home Assistant: {settings?.homeassistant ? 'Connected' : 'Not configured'}</span>
+                <span>{t('nav.settings')} - HA: {settings?.homeassistant ? '✓' : '✗'}</span>
               </div>
               <div className="flex items-center gap-4">
                 <div className={`h-3 w-3 rounded-full ${settings?.spoolman ? 'bg-green-500' : 'bg-gray-300'}`} />
-                <span>Spoolman: {settings?.spoolman ? 'Connected' : 'Not configured'}</span>
+                <span>Spoolman: {settings?.spoolman ? '✓' : '✗'}</span>
               </div>
               <Link href="/settings">
-                <Button>Configure Settings</Button>
+                <Button>{t('dashboard.configureSettings')}</Button>
               </Link>
             </CardContent>
           </Card>

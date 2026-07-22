@@ -55,6 +55,12 @@ const translations: Record<Language, Record<string, string>> = {
     'reports.usageBySpool': '按料盘统计',
     'reports.usageOverTime': '用量趋势',
 
+    // Scan
+    'scan.title': '扫描',
+    'scan.desc': '扫描 Spoolman 二维码或条形码以快速分配料盘。',
+    'scan.noSpools': '未找到料盘，请先在 Spoolman 中添加。',
+    'scan.writeNfc': '将料盘链接写入 NFC 标签，手机触碰即可快速分配到 AMS 槽位。',
+
     // Settings
     'settings.title': '设置',
     'settings.ha': 'Home Assistant',

@@ -8,11 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
+import { useI18n } from '@/lib/i18n';
 import type { Spool } from '@/lib/api/spoolman';
 import { QRCodeGenerator } from '@/components/qr-code-generator';
 import { NFCWriter } from '@/components/nfc-writer';
 
 function ScanPageContent() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [allSpools, setAllSpools] = useState<Spool[]>([]);
@@ -148,9 +150,9 @@ function ScanPageContent() {
       {/* QR Scanner */}
       <Card>
         <CardHeader>
-          <CardTitle>Scan QR Code</CardTitle>
+          <CardTitle>{t('scan.title')}</CardTitle>
           <CardDescription>
-            Point your camera at a Spoolman QR code or Spoolman barcode
+            {t('scan.desc')}
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -6,6 +6,7 @@ import { PeriodSelector } from '@/components/reports/period-selector';
 import { SummaryCards } from '@/components/reports/summary-cards';
 import { UsageBySpool } from '@/components/reports/usage-by-spool';
 import { UsageOverTime } from '@/components/reports/usage-over-time';
+import { useI18n } from '@/lib/i18n';
 import type { SpoolData } from '@/components/reports/usage-by-spool';
 
 interface TimeBucket {
@@ -25,6 +26,7 @@ interface ReportData {
 }
 
 export default function ReportsPage() {
+  const { t } = useI18n();
   const [selectedDays, setSelectedDays] = useState<number | null>(30);
   const [data, setData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -135,7 +137,7 @@ export default function ReportsPage() {
       <Nav />
       <main className="w-full max-w-7xl mx-auto py-6 px-3 sm:px-4 md:px-6">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h1 className="text-xl sm:text-2xl font-bold">Filament Usage Reports</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">{t('reports.title')}</h1>
           <PeriodSelector selectedDays={selectedDays} onChange={setSelectedDays} />
         </div>
 
