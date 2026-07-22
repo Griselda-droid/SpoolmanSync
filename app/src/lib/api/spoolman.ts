@@ -451,10 +451,37 @@ export class SpoolmanClient {
   }
 
   /**
+   * Create a new vendor
+   */
+  async createVendor(name: string): Promise<Vendor> {
+    return this.fetch('/vendor', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+  }
+
+  /**
    * Get all filaments
    */
   async getFilaments(): Promise<Filament[]> {
     return this.fetch('/filament');
+  }
+
+  /**
+   * Create a new filament
+   */
+  async createFilament(data: {
+    name: string;
+    material?: string;
+    vendor_id?: number;
+    color_hex?: string;
+    density?: number;
+    diameter?: number;
+  }): Promise<Filament> {
+    return this.fetch('/filament', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
   }
 
   /**
