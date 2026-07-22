@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { SpoolColorSwatch } from '@/components/spool-color-swatch';
 import { toast } from 'sonner';
 import { Loader2, Eye, Search } from 'lucide-react';
-import { useI18n } from '@/lib/i18n/i18n-provider';
+import { useI18n } from '@/lib/i18n/i18n-context';
 import type { Spool, Filament } from '@/lib/api/spoolman';
 
 interface ViewSpoolsDialogProps {
@@ -83,14 +83,14 @@ export function ViewSpoolsDialog({ open, onOpenChange }: ViewSpoolsDialogProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-screen overflow-y-auto">
+      <DialogContent className="sm:max-w-5xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Eye className="h-5 w-5" />
             {t('spool', 'spoolsList')}
           </DialogTitle>
           <DialogDescription>
-            {t('spool', 'noExistingSpools')} {spools.length} {t('spool', 'spools')}
+            {spools.length} {t('spool', 'spools')}
           </DialogDescription>
         </DialogHeader>
 
@@ -114,7 +114,7 @@ export function ViewSpoolsDialog({ open, onOpenChange }: ViewSpoolsDialogProps) 
               {spools.length === 0 ? t('spool', 'noExistingSpools') : 'No results found'}
             </div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
+            <div className="border rounded-lg overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
