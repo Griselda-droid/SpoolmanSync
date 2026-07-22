@@ -1,7 +1,6 @@
 // Translation system for SpoolmanSync
 export const translations = {
   en: {
-    // Navigation
     nav: {
       dashboard: 'Dashboard',
       automations: 'Automations',
@@ -10,7 +9,6 @@ export const translations = {
       settings: 'Settings',
       logs: 'Logs',
     },
-    // Dashboard
     dashboard: {
       title: 'Dashboard',
       refresh: 'Refresh',
@@ -29,18 +27,7 @@ export const translations = {
       makeSureConnected: 'Make sure your Bambu Lab printer is connected to Home Assistant via the ha-bambulab integration and added in SpoolmanSync Settings.',
       reconfigureAutomations: 'Reconfigure Automations',
       filamentUsed: 'Filament used',
-      autoAssigned: 'Auto-assigned',
-      unassigned: 'Unassigned',
-      trayHasFilament: 'has filament but no assigned spool.',
-      clickTrayToSelect: 'Click on the tray card below to select which Spoolman spool is loaded.',
-      ensureAccurateTracking: 'This ensures accurate filament tracking when prints complete.',
-      areaReports: 'AMS reports',
-      remainingGrams: 'g remaining',
-      spools: 'spools',
-      lowest: 'lowest',
-      configureAlerts: 'Configure alerts in Settings',
     },
-    // Spool Management
     spool: {
       addSpool: 'Add Spool',
       chooseSpool: 'Choose a filament type to create a new spool.',
@@ -56,7 +43,6 @@ export const translations = {
       location: 'Location',
       lotNr: 'Lot Number',
       comment: 'Comment',
-      required: 'required',
       totalWeightInGrams: 'Total weight in grams (filament + spool)',
       emptySpoolWeight: 'Empty spool weight in grams',
       shelfExample: 'e.g. Shelf A, Dry Box 2',
@@ -75,15 +61,12 @@ export const translations = {
       material: 'Material',
       vendor: 'Vendor',
       remaining: 'Remaining',
-      status: 'Status',
       diameter: 'Diameter',
       density: 'Density',
-      action: 'Action',
       noExistingSpools: 'No spools in Spoolman inventory',
       loadingSpools: 'Loading spools...',
       failedToLoadSpools: 'Failed to load spools',
     },
-    // Settings
     settings: {
       title: 'Settings',
       general: 'General Settings',
@@ -95,7 +78,6 @@ export const translations = {
       lowFilamentAlerts: 'Low Filament Alerts',
       addFilamentAlert: 'Add Filament Alert',
     },
-    // Common
     common: {
       error: 'Error',
       success: 'Success',
@@ -104,17 +86,10 @@ export const translations = {
       delete: 'Delete',
       edit: 'Edit',
       close: 'Close',
-      loading2: 'Loading...',
       retry: 'Retry',
-      filamentUsed: 'Filament used: {{amount}}g from {{spool}}',
-      failedToAssignSpool: 'Failed to assign spool',
-      failedToUnassignSpool: 'Failed to unassign spool',
-      spoolAssignedSuccessfully: 'Spool assigned successfully',
-      spoolUnassigned: 'Spool unassigned',
     },
   },
   zh: {
-    // 导航
     nav: {
       dashboard: '仪表盘',
       automations: '自动化',
@@ -123,7 +98,6 @@ export const translations = {
       settings: '设置',
       logs: '日志',
     },
-    // 仪表盘
     dashboard: {
       title: '仪表盘',
       refresh: '刷新',
@@ -142,18 +116,7 @@ export const translations = {
       makeSureConnected: '确保你的 Bambu Lab 打印机已通过 ha-bambulab 集成连接到 Home Assistant，并在 SpoolmanSync 设置中添加。',
       reconfigureAutomations: '重新配置自动化',
       filamentUsed: '已使用耗材',
-      autoAssigned: '自动分配',
-      unassigned: '未分配',
-      trayHasFilament: '有耗材但未分配料卷',
-      clickTrayToSelect: '点击下面的料盘卡片选择加载的 Spoolman 料卷',
-      ensureAccurateTracking: '这样可以确保打印完成时的耗材追踪准确',
-      areaReports: '打印机报告',
-      remainingGrams: '克剩余',
-      spools: '料卷',
-      lowest: '最低',
-      configureAlerts: '在设置中配置警报',
     },
-    // 料盘管理
     spool: {
       addSpool: '添加料卷',
       chooseSpool: '选择耗材类型以创建新料卷',
@@ -169,7 +132,6 @@ export const translations = {
       location: '位置',
       lotNr: '批号',
       comment: '备注',
-      required: '必填',
       totalWeightInGrams: '总重量(克)(耗材 + 料盘)',
       emptySpoolWeight: '空料盘重量(克)',
       shelfExample: '例如：架子 A、干燥盒 2',
@@ -188,15 +150,12 @@ export const translations = {
       material: '材料',
       vendor: '制造商',
       remaining: '剩余',
-      status: '状态',
       diameter: '直径',
       density: '密度',
-      action: '操作',
       noExistingSpools: 'Spoolman 库存中没有料卷',
       loadingSpools: '正在加载料卷...',
       failedToLoadSpools: '加载料卷失败',
     },
-    // 设置
     settings: {
       title: '设置',
       general: '常规设置',
@@ -208,7 +167,6 @@ export const translations = {
       lowFilamentAlerts: '耗材不足警报',
       addFilamentAlert: '添加耗材警报',
     },
-    // 通用
     common: {
       error: '错误',
       success: '成功',
@@ -217,35 +175,15 @@ export const translations = {
       delete: '删除',
       edit: '编辑',
       close: '关闭',
-      loading2: '加载中...',
       retry: '重试',
-      filamentUsed: '已使用耗材: {{amount}}克 来自 {{spool}}',
-      failedToAssignSpool: '分配料卷失败',
-      failedToUnassignSpool: '取消分配料卷失败',
-      spoolAssignedSuccessfully: '料卷分配成功',
-      spoolUnassigned: '料卷已取消分配',
     },
   },
 };
 
 export type LanguageCode = keyof typeof translations;
-export type TranslationKey = keyof typeof translations.en;
 
-export function getTranslation(lang: LanguageCode, section: string, key: string, variables?: Record<string, string | number>): string {
+export function getTranslation(lang: LanguageCode, section: string, key: string): string {
   const sectionTranslations = translations[lang]?.[section as keyof typeof translations.en];
   const value = sectionTranslations?.[key as keyof any];
-
-  if (!value) {
-    return key;
-  }
-
-  if (variables && typeof value === 'string') {
-    let result = value;
-    Object.entries(variables).forEach(([varKey, varValue]) => {
-      result = result.replace(`{{${varKey}}}`, String(varValue));
-    });
-    return result;
-  }
-
-  return value;
+  return value || key;
 }
