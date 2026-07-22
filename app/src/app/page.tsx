@@ -234,7 +234,8 @@ export default function Dashboard() {
       });
 
       if (!res.ok) {
-        throw new Error('Failed to assign spool');
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || 'Failed to assign spool');
       }
 
       toast.success('Spool assigned successfully');

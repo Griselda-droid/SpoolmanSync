@@ -25,6 +25,16 @@ import { toast } from 'sonner';
 import { Loader2, Plus, Check, Palette } from 'lucide-react';
 import type { Filament } from '@/lib/api/spoolman';
 
+interface FilamentProfile {
+  name: string;
+  filament_vendor: string;
+  filament_type: string;
+  filament_density: number;
+  nozzle_temperature: number;
+  nozzle_temperature_range_high: number;
+  nozzle_temperature_range_low: number;
+}
+
 // Preset common 3D printing filament colors
 const PRESET_COLORS = [
   { label: '黑色', hex: '#000000' },
@@ -45,29 +55,13 @@ const PRESET_COLORS = [
   { label: '深蓝', hex: '#000080' },
 ];
 
-// Preset common filament materials with Bambu Lab official densities
-const PRESET_MATERIALS: { name: string; density: string }[] = [
-  { name: 'PLA Basic', density: '1.24' },
-  { name: 'PETG Basic', density: '1.25' },
-  { name: 'PLA Matte', density: '1.24' },
-  { name: 'PLA Silk', density: '1.24' },
-  { name: 'PLA Wood', density: '1.31' },
-  { name: 'PLA-CF', density: '1.30' },
-  { name: 'PLA Metal', density: '1.50' },
-  { name: 'PETG Translucent', density: '1.27' },
-  { name: 'PETG-CF', density: '1.30' },
-  { name: 'ABS', density: '1.04' },
-  { name: 'ASA', density: '1.07' },
-  { name: 'TPU 95A', density: '1.21' },
-  { name: 'PA (Nylon)', density: '1.14' },
-  { name: 'PA-CF', density: '1.25' },
-  { name: 'PAHT-CF', density: '1.25' },
-  { name: 'PC', density: '1.20' },
-  { name: 'PP', density: '0.90' },
-  { name: 'PVA', density: '1.23' },
-  { name: 'HIPS', density: '1.04' },
-  { name: 'PCTG', density: '1.23' },
-];
+export function buildFilamentName(vendor: string, material: string, colorLabel?: string): string {
+  return [vendor.trim(), material.trim(), colorLabel?.trim()].filter(Boolean).join(' ');
+}
+
+function colorLabelForHex(hex: string): string | undefined {
+  return PRESET_COLORS.find((color) => color.hex.toLowerCase() === hex.toLowerCase())?.label;
+}
 
 interface AddSpoolDialogProps {
   open: boolean;
@@ -85,6 +79,9 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
   const [location, setLocation] = useState('');
   const [lotNr, setLotNr] = useState('');
   const [comment, setComment] = useState('');
+  const [kValuePresets, setKValuePresets] = useState<{ nickname: string; value: number }[]>([]);
+  const [selectedKValueNickname, setSelectedKValueNickname] = useState('');
+  const [kValue, setKValue] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [step, setStep] = useState<'select' | 'details'>('select');
 
@@ -97,6 +94,9 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
   const [newFilamentDensity, setNewFilamentDensity] = useState('1.24');
   const [newFilamentDiameter, setNewFilamentDiameter] = useState('1.75');
   const [creatingFilament, setCreatingFilament] = useState(false);
+  const [filamentProfiles, setFilamentProfiles] = useState<Record<string, FilamentProfile>>({});
+  const [filamentProfilesLoading, setFilamentProfilesLoading] = useState(false);
+  const [selectedProfileId, setSelectedProfileId] = useState('');
 
   // Vendor list fetched from Spoolman
   const [vendors, setVendors] = useState<{ id: number; name: string }[]>([]);
@@ -132,6 +132,18 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
       .catch(() => {});
   }, [createFilamentOpen]);
 
+  useEffect(() => {
+    if (!createFilamentOpen || Object.keys(filamentProfiles).length > 0) return;
+    setFilamentProfilesLoading(true);
+    fetch('/api/filament-profiles')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.profiles) setFilamentProfiles(data.profiles);
+      })
+      .catch(() => toast.error('加载官方耗材参数失败，可继续手动填写'))
+      .finally(() => setFilamentProfilesLoading(false));
+  }, [createFilamentOpen, filamentProfiles]);
+
   // Reset state when dialog opens/closes
   const resetForm = useCallback(() => {
     setSelectedFilament(null);
@@ -141,6 +153,8 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
     setLocation('');
     setLotNr('');
     setComment('');
+    setSelectedKValueNickname('');
+    setKValue('');
     setStep('select');
   }, []);
 
@@ -152,6 +166,16 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
     }
   }, [open, resetForm]);
 
+  useEffect(() => {
+    if (!open) return;
+    fetch('/api/settings')
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data.kValuePresets)) setKValuePresets(data.kValuePresets);
+      })
+      .catch(() => {});
+  }, [open]);
+
   // Reset create filament form
   const resetCreateFilamentForm = useCallback(() => {
     setNewFilamentName('');
@@ -160,7 +184,21 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
     setNewFilamentColor('');
     setNewFilamentDensity('1.24');
     setNewFilamentDiameter('1.75');
+    setSelectedProfileId('');
   }, []);
+
+  const applyFilamentProfile = (profileId: string) => {
+    setSelectedProfileId(profileId);
+    const profile = filamentProfiles[profileId];
+    if (!profile) return;
+    setNewFilamentName(profile.name);
+    const profileName = profile.name
+      .replace(new RegExp(`^${profile.filament_vendor}\\s+`, 'i'), '')
+      .trim();
+    setNewFilamentMaterial(profileName || profile.filament_type);
+    setNewFilamentVendor(profile.filament_vendor);
+    setNewFilamentDensity(String(profile.filament_density));
+  };
 
   // Create a new filament in Spoolman
   const handleCreateFilament = async () => {
@@ -271,6 +309,7 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
           location: location.trim() || undefined,
           lot_nr: lotNr.trim() || undefined,
           comment: comment.trim() || undefined,
+          k_value: kValue.trim() ? Number(kValue) : undefined,
         }),
       });
 
@@ -415,6 +454,40 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="k-value-nickname">K 值预设</Label>
+                <Input
+                  id="k-value-nickname"
+                  list="k-value-presets"
+                  placeholder="选择或输入昵称"
+                  value={selectedKValueNickname}
+                  onChange={(e) => {
+                    const nickname = e.target.value;
+                    setSelectedKValueNickname(nickname);
+                    const preset = kValuePresets.find((item) => item.nickname === nickname);
+                    if (preset) setKValue(String(preset.value));
+                  }}
+                />
+                <datalist id="k-value-presets">
+                  {kValuePresets.map((preset) => (
+                    <option key={preset.nickname} value={preset.nickname} />
+                  ))}
+                </datalist>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="k-value">K 值</Label>
+                <Input
+                  id="k-value"
+                  type="number"
+                  step="0.0001"
+                  placeholder="可手动输入"
+                  value={kValue}
+                  onChange={(e) => setKValue(e.target.value)}
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="location">存放位置</Label>
               <Input
@@ -523,24 +596,35 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
                 <Label htmlFor="filamentMaterial">材料</Label>
                 <Input
                   id="filamentMaterial"
-                  placeholder="选择或输入材料..."
+                  placeholder="选择官方 profile 或输入材料..."
                   value={newFilamentMaterial}
-                  list="material-presets"
                   onChange={(e) => {
                     const val = e.target.value;
                     setNewFilamentMaterial(val);
-                    // Auto-fill density when matching a preset
-                    const preset = PRESET_MATERIALS.find((m) => m.name === val);
-                    if (preset) setNewFilamentDensity(preset.density);
+                    setNewFilamentName(buildFilamentName(newFilamentVendor, val, colorLabelForHex(newFilamentColor)));
                   }}
                 />
-                <datalist id="material-presets">
-                  {PRESET_MATERIALS.map((mat) => (
-                    <option key={mat.name} value={mat.name}>
-                      {mat.name} ({mat.density} g/cm³)
-                    </option>
-                  ))}
-                </datalist>
+                <select
+                  aria-label="官方耗材 profile"
+                  className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={selectedProfileId}
+                  onChange={(e) => applyFilamentProfile(e.target.value)}
+                  disabled={filamentProfilesLoading}
+                >
+                  <option value="">
+                    {filamentProfilesLoading ? '加载官方耗材参数...' : '选择官方 profile（可选）'}
+                  </option>
+                  {Object.entries(filamentProfiles)
+                    .sort(([, first], [, second]) => first.name.localeCompare(second.name))
+                    .map(([id, profile]) => (
+                      <option key={id} value={id}>
+                        {profile.name} · {profile.filament_density} g/cm³ · {id}
+                      </option>
+                    ))}
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  选择官方 profile 会自动填充名称、材料、品牌和准确密度。
+                </p>
               </div>
             </div>
 
@@ -551,7 +635,11 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
                 placeholder="选择或输入品牌..."
                 value={newFilamentVendor}
                 list="vendor-list"
-                onChange={(e) => setNewFilamentVendor(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setNewFilamentVendor(val);
+                  setNewFilamentName(buildFilamentName(val, newFilamentMaterial, colorLabelForHex(newFilamentColor)));
+                }}
               />
               <datalist id="vendor-list">
                 {vendors.map((v) => (
@@ -578,7 +666,7 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
                     onClick={() => {
                       const newColor = newFilamentColor === color.hex ? '' : color.hex;
                       setNewFilamentColor(newColor);
-                      if (newColor) setNewFilamentName(color.label);
+                      setNewFilamentName(buildFilamentName(newFilamentVendor, newFilamentMaterial, newColor ? color.label : undefined));
                     }}
                   />
                 ))}
@@ -588,13 +676,29 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
                 <Input
                   type="color"
                   value={newFilamentColor || '#000000'}
-                  onChange={(e) => setNewFilamentColor(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setNewFilamentColor(val);
+                    setNewFilamentName(buildFilamentName(
+                      newFilamentVendor,
+                      newFilamentMaterial,
+                      colorLabelForHex(val),
+                    ));
+                  }}
                   className="h-8 w-12 p-0.5 cursor-pointer"
                 />
                 <Input
                   placeholder="#000000"
                   value={newFilamentColor}
-                  onChange={(e) => setNewFilamentColor(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setNewFilamentColor(val);
+                    setNewFilamentName(buildFilamentName(
+                      newFilamentVendor,
+                      newFilamentMaterial,
+                      colorLabelForHex(val),
+                    ));
+                  }}
                   className="h-8 w-28 font-mono text-sm"
                 />
               </div>

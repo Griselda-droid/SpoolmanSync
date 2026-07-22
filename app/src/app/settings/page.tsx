@@ -27,6 +27,11 @@ interface AdminCredentials {
   hasPassword: boolean;
 }
 
+interface KValuePreset {
+  nickname: string;
+  value: number;
+}
+
 interface Settings {
   embeddedMode: boolean;
   addonMode?: boolean;
@@ -39,6 +44,7 @@ interface Settings {
   spoolman: { url: string; connected: boolean } | null;
   neverAutoClearTray?: boolean;
   webhookConfigured?: boolean;
+  kValuePresets?: KValuePreset[];
 }
 
 interface ConfigEntry {
@@ -99,6 +105,10 @@ function SettingsContent() {
   // Sync behavior settings
   const [neverAutoClearTray, setNeverAutoClearTray] = useState(false);
   const [syncSpoolmanLocation, setSyncSpoolmanLocation] = useState(false);
+  const [kValuePresets, setKValuePresets] = useState<KValuePreset[]>([]);
+  const [newKValueNickname, setNewKValueNickname] = useState('');
+  const [newKValue, setNewKValue] = useState('');
+  const [savingKValues, setSavingKValues] = useState(false);
 
   // QR base URL state
   const [qrBaseUrl, setQrBaseUrl] = useState('');
@@ -199,6 +209,9 @@ function SettingsContent() {
       }
       if (data.syncSpoolmanLocation !== undefined) {
         setSyncSpoolmanLocation(data.syncSpoolmanLocation);
+      }
+      if (Array.isArray(data.kValuePresets)) {
+        setKValuePresets(data.kValuePresets);
       }
     } catch {
       toast.error('Failed to load settings');
@@ -438,6 +451,40 @@ function SettingsContent() {
     } finally {
       setSavingFilters(false);
     }
+  };
+
+  const saveKValuePresets = async (presets: KValuePreset[]) => {
+    setSavingKValues(true);
+    try {
+      const res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'k_value_presets', presets }),
+      });
+      if (!res.ok) throw new Error('保存 K 值设置失败');
+      setKValuePresets(presets);
+      toast.success('K 值设置已保存');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '保存 K 值设置失败');
+    } finally {
+      setSavingKValues(false);
+    }
+  };
+
+  const addKValuePreset = () => {
+    const nickname = newKValueNickname.trim();
+    const value = Number(newKValue);
+    if (!nickname || !Number.isFinite(value)) {
+      toast.error('请输入昵称和有效的 K 值');
+      return;
+    }
+    if (kValuePresets.some((preset) => preset.nickname === nickname)) {
+      toast.error('K 值昵称已存在');
+      return;
+    }
+    void saveKValuePresets([...kValuePresets, { nickname, value }]);
+    setNewKValueNickname('');
+    setNewKValue('');
   };
 
   const toggleFilter = (fieldKey: string) => {
@@ -1186,6 +1233,69 @@ function SettingsContent() {
           {/* Dashboard Display Settings */}
           {settings?.spoolman && (
             <>
+              <Separator />
+              <Card>
+                <CardHeader>
+                  <CardTitle>K 值预设</CardTitle>
+                  <CardDescription>为常用材料校准值设置昵称，添加或修改料盘时可以选择。</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {kValuePresets.map((preset, index) => (
+                    <div key={`${preset.nickname}-${index}`} className="flex items-center gap-2">
+                      <Input
+                        value={preset.nickname}
+                        aria-label="K 值昵称"
+                        onChange={(e) => {
+                          const next = [...kValuePresets];
+                          next[index] = { ...preset, nickname: e.target.value };
+                          setKValuePresets(next);
+                        }}
+                        onBlur={() => void saveKValuePresets(kValuePresets)}
+                      />
+                      <Input
+                        type="number"
+                        step="0.0001"
+                        value={preset.value}
+                        aria-label="K 值"
+                        onChange={(e) => {
+                          const next = [...kValuePresets];
+                          next[index] = { ...preset, value: Number(e.target.value) };
+                          setKValuePresets(next);
+                        }}
+                        onBlur={() => void saveKValuePresets(kValuePresets)}
+                        className="w-32"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        disabled={savingKValues}
+                        onClick={() => void saveKValuePresets(kValuePresets.filter((_, itemIndex) => itemIndex !== index))}
+                      >
+                        删除
+                      </Button>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-2 border-t pt-3">
+                    <Input
+                      placeholder="昵称，例如 PLA"
+                      value={newKValueNickname}
+                      onChange={(e) => setNewKValueNickname(e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      step="0.0001"
+                      placeholder="K 值"
+                      value={newKValue}
+                      onChange={(e) => setNewKValue(e.target.value)}
+                      className="w-32"
+                    />
+                    <Button type="button" onClick={addKValuePreset} disabled={savingKValues}>
+                      添加
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
               <Separator />
               <Card>
                 <CardHeader>

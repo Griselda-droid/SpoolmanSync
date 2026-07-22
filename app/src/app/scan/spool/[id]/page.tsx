@@ -158,7 +158,10 @@ export default function SpoolAssignPage({
         body: JSON.stringify({ spoolId: spool.id, trayId: tray.id }),
       });
 
-      if (!res.ok) throw new Error('Failed to assign spool');
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || 'Failed to assign spool');
+      }
 
       if (kioskMode) {
         const trayLabel = tray.amsName ? `${tray.amsName} — ${tray.label}` : tray.label;

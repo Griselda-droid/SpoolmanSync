@@ -11,6 +11,7 @@ import {
 } from '@/lib/api/homeassistant';
 import { createActivityLog } from '@/lib/activity-log';
 import { isWebhookAuthEnabled } from '@/lib/webhook-secret';
+import { normalizeKValuePresets } from '@/lib/k-value';
 
 export async function GET() {
   try {
@@ -51,6 +52,7 @@ export async function GET() {
       const showLocationSetting = await prisma.settings.findUnique({ where: { key: 'show_spool_location' } });
       const neverAutoClearSetting = await prisma.settings.findUnique({ where: { key: 'never_auto_clear_tray' } });
       const syncLocationSetting = await prisma.settings.findUnique({ where: { key: 'sync_spoolman_location' } });
+      const kValuePresetsSetting = await prisma.settings.findUnique({ where: { key: 'k_value_presets' } });
       const webhookAuthEnabled = await isWebhookAuthEnabled();
 
       return NextResponse.json({
@@ -69,6 +71,7 @@ export async function GET() {
         showSpoolLocation: showLocationSetting?.value === 'true',
         neverAutoClearTray: neverAutoClearSetting?.value === 'true',
         syncSpoolmanLocation: syncLocationSetting?.value === 'true',
+        kValuePresets: kValuePresetsSetting ? normalizeKValuePresets(JSON.parse(kValuePresetsSetting.value)) : [],
         webhookConfigured: webhookAuthEnabled,
       });
     }
@@ -255,6 +258,7 @@ export async function GET() {
     const showLocationSetting = await prisma.settings.findUnique({ where: { key: 'show_spool_location' } });
     const neverAutoClearSetting = await prisma.settings.findUnique({ where: { key: 'never_auto_clear_tray' } });
     const syncLocationSetting = await prisma.settings.findUnique({ where: { key: 'sync_spoolman_location' } });
+    const kValuePresetsSetting = await prisma.settings.findUnique({ where: { key: 'k_value_presets' } });
     const webhookAuthEnabled = await isWebhookAuthEnabled();
 
     return NextResponse.json({
@@ -269,6 +273,7 @@ export async function GET() {
       showSpoolLocation: showLocationSetting?.value === 'true',
       neverAutoClearTray: neverAutoClearSetting?.value === 'true',
       syncSpoolmanLocation: syncLocationSetting?.value === 'true',
+      kValuePresets: kValuePresetsSetting ? normalizeKValuePresets(JSON.parse(kValuePresetsSetting.value)) : [],
       webhookConfigured: webhookAuthEnabled,
     });
   } catch (error) {
@@ -281,6 +286,16 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { type, url, config } = body;
+
+    if (type === 'k_value_presets') {
+      const presets = normalizeKValuePresets(body.presets);
+      await prisma.settings.upsert({
+        where: { key: 'k_value_presets' },
+        create: { key: 'k_value_presets', value: JSON.stringify(presets) },
+        update: { value: JSON.stringify(presets) },
+      });
+      return NextResponse.json({ success: true, presets });
+    }
 
     if (type === 'filter_config') {
       // Save spool filter configuration

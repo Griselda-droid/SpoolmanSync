@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { SpoolmanClient } from '@/lib/api/spoolman';
-import { HomeAssistantClient } from '@/lib/api/homeassistant';
+import { bambuTrayBrand, bambuTrayFilamentSettings, HomeAssistantClient } from '@/lib/api/homeassistant';
 import { spoolEvents, SPOOL_UPDATED, SpoolUpdateEvent } from '@/lib/events';
 import { createActivityLog } from '@/lib/activity-log';
 import { checkAndUpdateAlerts } from '@/lib/alerts';
+import { parseKValue } from '@/lib/k-value';
 import { getWebhookSecret, isWebhookAuthEnabled, tokensMatch, WEBHOOK_TOKEN_HEADER } from '@/lib/webhook-secret';
 import { isValidTrayUuid, lengthToWeight, classifyTrayState, isActivePrintState } from '@/lib/webhook-helpers';
 import { makeLocationResolver } from '@/lib/spool-location';
@@ -363,6 +364,37 @@ export async function POST(request: NextRequest) {
 
         if (matchedSpool) {
           await client.assignSpoolToTray(matchedSpool.id, trayUniqueId);
+
+          const haClient = await HomeAssistantClient.fromConnection();
+          if (haClient) {
+            const printers = await haClient.discoverPrinters();
+            const bambuTray = printers
+              .filter((printer) => printer.brand === 'bambu_lab' && !printer.is_virtual)
+              .flatMap((printer) => [
+                ...printer.ams_units.flatMap((ams) => ams.trays),
+                ...printer.external_spools,
+              ])
+              .find((tray) => tray.entity_id === tray_entity_id);
+            console.info('[Webhook] HA tray lookup', {
+              requested_tray: tray_entity_id,
+              matched_tray: bambuTray?.entity_id || null,
+              brand: bambuTrayBrand(matchedSpool.filament.vendor?.name),
+            });
+            if (bambuTray) {
+              const brand = bambuTrayBrand(matchedSpool.filament.vendor?.name);
+              await haClient.setBambuTrayBrand(
+                bambuTray,
+                brand,
+                bambuTrayFilamentSettings(
+                  matchedSpool.filament.material,
+                  matchedSpool.filament.color_hex,
+                  matchedSpool.filament.name,
+                  matchedSpool.filament.vendor?.name,
+                  parseKValue(matchedSpool.comment),
+                ),
+              );
+            }
+          }
 
           // Emit real-time update event
           const updateEvent: SpoolUpdateEvent = {

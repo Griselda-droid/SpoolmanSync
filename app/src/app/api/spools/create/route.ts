@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { SpoolmanClient } from '@/lib/api/spoolman';
 import { createActivityLog } from '@/lib/activity-log';
+import { formatCommentWithKValue } from '@/lib/k-value';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { filament_id, initial_weight, spool_weight, location, lot_nr, comment } = body;
+    const { filament_id, initial_weight, spool_weight, location, lot_nr, comment, k_value } = body;
 
     // Validate required fields
     if (typeof filament_id !== 'number' || !Number.isFinite(filament_id) || filament_id <= 0) {
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
       spool_weight: spool_weight ?? undefined,
       location: location || undefined,
       lot_nr: lot_nr || undefined,
-      comment: comment || undefined,
+      comment: formatCommentWithKValue(comment, typeof k_value === 'number' ? k_value : undefined),
     });
 
     // Log activity

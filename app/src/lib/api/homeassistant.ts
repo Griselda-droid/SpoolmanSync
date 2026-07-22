@@ -9,6 +9,7 @@
 
 import prisma from '@/lib/db';
 import WebSocket from 'ws';
+import filamentProfiles from '@/lib/filaments_detail.json';
 
 export interface HAState {
   entity_id: string;
@@ -75,14 +76,157 @@ interface DeviceRegistryEntry {
 
 export interface HATray {
   entity_id: string;
+  empty?: boolean;
   unique_id?: string;     // Stable ID from entity registry (survives entity renames)
   tray_number: number;
   is_external?: boolean;  // True for external spool slots
   name?: string;  // Filament name from RFID (e.g., "Matte Dark Blue")
   color?: string;
   material?: string;
+  filament_id?: string;
+  k_value?: number;
+  nozzle_temp_min?: number;
+  nozzle_temp_max?: number;
   tray_uuid?: string;  // Spool serial number (unique per physical spool)
   remaining_weight?: number;
+}
+
+/** HA-Bambu Lab select option for the filament source on a tray. */
+export type BambuTrayBrand = 'Bambu' | 'Generic';
+
+export function bambuTrayBrand(vendorName: string | null | undefined): BambuTrayBrand {
+  const normalized = vendorName?.trim().toLowerCase();
+  return normalized === 'bambu' || normalized === 'bambu lab' ? 'Bambu' : 'Generic';
+}
+
+function normalizeFilamentText(value: string | null | undefined): string {
+  return (value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/拓竹/g, 'bambu lab')
+    .replace(/通用/g, 'generic')
+    .replace(/\bbambu\b(?!\s+lab)/g, 'bambu lab')
+    .replace(/\s+/g, ' ');
+}
+
+function profileMatchesBrand(
+  profileVendor: string,
+  brand: BambuTrayBrand,
+  vendorName?: string | null,
+): boolean {
+  const requestedVendor = normalizeFilamentText(vendorName);
+  if (requestedVendor) {
+    return normalizeFilamentText(profileVendor) === requestedVendor;
+  }
+  return brand === 'Bambu'
+    ? normalizeFilamentText(profileVendor) === 'bambu lab'
+    : normalizeFilamentText(profileVendor) === 'generic';
+}
+
+function profileMaterialVariant(profileName: string, profileVendor: string): string {
+  const normalizedName = normalizeFilamentText(profileName);
+  const normalizedVendor = normalizeFilamentText(profileVendor);
+  return normalizedName.startsWith(`${normalizedVendor} `)
+    ? normalizedName.slice(normalizedVendor.length + 1)
+    : normalizedName;
+}
+
+function requestedMaterialVariant(
+  material: string | null | undefined,
+  brand: BambuTrayBrand,
+  vendorName?: string | null,
+): string {
+  const normalizedMaterial = normalizeFilamentText(material);
+  const vendor = vendorName || (brand === 'Bambu' ? 'Bambu Lab' : 'Generic');
+  const normalizedVendor = normalizeFilamentText(vendor);
+  return normalizedMaterial.startsWith(`${normalizedVendor} `)
+    ? normalizedMaterial.slice(normalizedVendor.length + 1)
+    : normalizedMaterial;
+}
+
+export function bambuFilamentId(
+  material: string | null | undefined,
+  brand: BambuTrayBrand,
+  currentId?: string,
+  filamentName?: string | null,
+  vendorName?: string | null,
+): string {
+  const normalizedName = normalizeFilamentText(filamentName);
+  const matchingProfile = Object.entries(filamentProfiles).find(([, profile]) => {
+    if (!normalizedName) return false;
+    return profileMatchesBrand(profile.filament_vendor, brand, vendorName)
+      && normalizeFilamentText(profile.name) === normalizedName;
+  });
+  if (matchingProfile) return matchingProfile[0];
+
+  const normalizedMaterial = requestedMaterialVariant(material, brand, vendorName).toUpperCase();
+  const variantProfile = Object.entries(filamentProfiles).find(([, profile]) => {
+    const profileName = profileMaterialVariant(profile.name, profile.filament_vendor).toUpperCase();
+    return profileMatchesBrand(profile.filament_vendor, brand, vendorName)
+      && (profileName === normalizedMaterial || normalizedMaterial.startsWith(`${profileName} `));
+  });
+  if (variantProfile) return variantProfile[0];
+
+  const materialProfile = Object.entries(filamentProfiles).find(([, profile]) =>
+    profileMatchesBrand(profile.filament_vendor, brand, vendorName)
+    && profile.filament_type.trim().toUpperCase() === normalizedMaterial,
+  );
+  if (materialProfile) return materialProfile[0];
+
+  // Only retain the current ID when the requested material is unknown. A stale
+  // tray ID must never turn a material change into the previous profile.
+  return currentId || (brand === 'Bambu' ? 'GFA00' : 'GFA99');
+}
+
+export function bambuFilamentProfile(
+  material: string | null | undefined,
+  brand: BambuTrayBrand,
+  currentId?: string,
+  filamentName?: string | null,
+  vendorName?: string | null,
+) {
+  const id = bambuFilamentId(material, brand, currentId, filamentName, vendorName);
+  return {
+    id,
+    profile: filamentProfiles[id as keyof typeof filamentProfiles] || filamentProfiles.GFA00,
+  };
+}
+
+export function bambuTrayMaterial(material: string | null | undefined): string {
+  const normalizedMaterial = material?.trim().toUpperCase();
+  return normalizedMaterial === 'PLA SILK' ? 'PLA' : normalizedMaterial || 'PLA';
+}
+
+export interface BambuTrayFilamentSettings {
+  material: string;
+  color: string;
+  name?: string | null;
+  vendor?: string | null;
+  kValue?: number;
+}
+
+export function bambuTrayFilamentSettings(
+  material: string | null | undefined,
+  colorHex: string | null | undefined,
+  name?: string | null,
+  vendor?: string | null,
+  kValue?: number,
+): BambuTrayFilamentSettings {
+  const normalizedColor = (colorHex || '000000')
+    .replace(/^#/, '')
+    .replace(/[^0-9A-Fa-f]/g, '')
+    .padEnd(6, '0')
+    .slice(0, 6)
+    .toUpperCase();
+
+  const settings: BambuTrayFilamentSettings = {
+    material: bambuTrayMaterial(material),
+    color: `${normalizedColor}FF`,
+  };
+  if (name !== undefined) settings.name = name;
+  if (vendor !== undefined) settings.vendor = vendor;
+  if (kValue !== undefined && Number.isFinite(kValue)) settings.kValue = kValue;
+  return settings;
 }
 
 /**
@@ -838,9 +982,13 @@ export class HomeAssistantClient {
               entity_id: bestTray.entity_id,
               unique_id: bestTray.unique_id,
               tray_number: trayNum,
+              empty: trayState?.attributes.empty as boolean,
               name: trayState?.attributes.name as string,
               color: trayState?.attributes.color as string,
               material: trayState?.attributes.type as string,
+              filament_id: trayState?.attributes.filament_id as string,
+              nozzle_temp_min: trayState?.attributes.nozzle_temp_min as number,
+              nozzle_temp_max: trayState?.attributes.nozzle_temp_max as number,
               tray_uuid: trayState?.attributes.tray_uuid as string,
               remaining_weight: trayState?.attributes.remain as number,
             });
@@ -861,9 +1009,13 @@ export class HomeAssistantClient {
             unique_id: bestExt.unique_id,
             tray_number: 0,
             is_external: true,
+            empty: extState?.attributes.empty as boolean,
             name: extState?.attributes.name as string,
             color: extState?.attributes.color as string,
             material: extState?.attributes.type as string,
+            filament_id: extState?.attributes.filament_id as string,
+            nozzle_temp_min: extState?.attributes.nozzle_temp_min as number,
+            nozzle_temp_max: extState?.attributes.nozzle_temp_max as number,
             tray_uuid: extState?.attributes.tray_uuid as string,
             remaining_weight: extState?.attributes.remain as number,
           });
@@ -1152,6 +1304,48 @@ export class HomeAssistantClient {
     await this.fetch(`/services/${domain}/${service}`, {
       method: 'POST',
       body: JSON.stringify(serviceData),
+    });
+  }
+
+  /** Update the Bambu/Generic filament profile on an AMS or external tray. */
+  async setBambuTrayBrand(
+    tray: HATray,
+    brand: BambuTrayBrand,
+    filament: BambuTrayFilamentSettings,
+  ): Promise<void> {
+    if (tray.empty) {
+      throw new Error(`HA tray is empty: ${tray.entity_id}`);
+    }
+
+    const resolvedProfile = bambuFilamentProfile(
+      filament.material,
+      brand,
+      tray.filament_id,
+      filament.name,
+      filament.vendor,
+    );
+    const { id: filamentId, profile } = resolvedProfile;
+    console.info('[HA Bambu] setting tray filament', {
+      entity_id: tray.entity_id,
+      option: brand,
+      filament_id: filamentId,
+      tray_type: profile.filament_type,
+      k_value: filament.kValue ?? null,
+      k_value_supported_by_service: false,
+    });
+    await this.callService('bambu_lab', 'set_filament', {
+      entity_id: tray.entity_id,
+      tray_info_idx: filamentId,
+      tray_color: filament.color,
+      tray_type: profile.filament_type,
+      nozzle_temp_min: profile.nozzle_temperature_range_low,
+      nozzle_temp_max: profile.nozzle_temperature_range_high,
+    });
+    console.info('[HA Bambu] tray filament profile updated', {
+      entity_id: tray.entity_id,
+      option: brand,
+      k_value: filament.kValue ?? null,
+      k_value_applied: false,
     });
   }
 

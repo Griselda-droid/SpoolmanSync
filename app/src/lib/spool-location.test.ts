@@ -5,6 +5,37 @@ import {
   truncateLocation,
   SPOOLMAN_LOCATION_MAX,
 } from './spool-location';
+import { bambuFilamentId, bambuTrayBrand, bambuTrayFilamentSettings } from './api/homeassistant';
+
+describe('bambuTrayBrand', () => {
+  it('uses Bambu for the Bambu vendor regardless of case or whitespace', () => {
+    expect(bambuTrayBrand(' Bambu ')).toBe('Bambu');
+    expect(bambuTrayBrand(' Bambu Lab ')).toBe('Bambu');
+  });
+
+  it('uses Generic for every other vendor', () => {
+    expect(bambuTrayBrand('SUNLU')).toBe('Generic');
+    expect(bambuTrayBrand(undefined)).toBe('Generic');
+  });
+});
+
+describe('bambu filament profiles', () => {
+  it('uses the PLA Silk profile instead of the previous tray profile', () => {
+    expect(bambuFilamentId('PLA SILK', 'Bambu', 'GFG00')).toBe('GFA05');
+    expect(bambuFilamentId('PLA SILK', 'Generic', 'GFG00')).toBe('GFL96');
+    expect(bambuFilamentId('PLA SILK', 'Bambu', 'GFA00', 'Bambu PLA Silk', 'Bambu Lab')).toBe('GFA05');
+    expect(bambuFilamentId('PLA SILK', 'Generic', 'GFA00', 'Generic PLA Silk', 'Generic')).toBe('GFL96');
+    expect(bambuFilamentId('TPU 95A HF', 'Bambu', 'GFA00', 'Bambu TPU 95A HF', 'Bambu Lab')).toBe('GFU00');
+    expect(bambuFilamentId('TPU 95A', 'Bambu', 'GFA00', 'Bambu TPU 95A', 'Bambu Lab')).toBe('GFU01');
+    expect(bambuFilamentId('Bambu PLA Silk', 'Bambu', 'GFG00', 'Bambu PLA Silk 蓝绿', 'Bambu Lab')).toBe('GFA05');
+    expect(bambuFilamentId('Bambu TPU 95A HF', 'Bambu', 'GFG00', 'Bambu Lab TPU 95A HF 红色', 'Bambu Lab')).toBe('GFU00');
+    expect(bambuFilamentId('TPU 95A HF', 'Bambu', 'GFA00')).toBe('GFU00');
+    expect(bambuTrayFilamentSettings('PLA SILK', '#70B8C2')).toEqual({
+      material: 'PLA',
+      color: '70B8C2FF',
+    });
+  });
+});
 
 describe('realTrayLocationLabel', () => {
   it('formats an AMS tray', () => {

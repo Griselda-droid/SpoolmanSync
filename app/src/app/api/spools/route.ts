@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { SpoolmanClient } from '@/lib/api/spoolman';
-import { HomeAssistantClient } from '@/lib/api/homeassistant';
+import { bambuTrayBrand, bambuTrayFilamentSettings, HomeAssistantClient, type HATray } from '@/lib/api/homeassistant';
 import { createActivityLog } from '@/lib/activity-log';
 import { makeLocationResolver } from '@/lib/spool-location';
+import { parseKValue } from '@/lib/k-value';
 
 export async function GET() {
   try {
@@ -65,7 +66,55 @@ export async function POST(request: NextRequest) {
     const locationResolver = await makeLocationResolver();
     if (locationResolver) client.setLocationResolver(locationResolver);
 
+    const haClient = await HomeAssistantClient.fromConnection();
+    let haTray: HATray | undefined;
+    if (haClient) {
+      const printer = (await haClient.discoverPrinters()).find((candidate) =>
+        candidate.brand === 'bambu_lab' && !candidate.is_virtual && (
+          candidate.ams_units.some((ams) => ams.trays.some((tray) => tray.unique_id === trayId || tray.entity_id === trayId)) ||
+          candidate.external_spools.some((tray) => tray.unique_id === trayId || tray.entity_id === trayId)
+        )
+      );
+      const tray = printer && [
+        ...printer.ams_units.flatMap((ams) => ams.trays),
+        ...printer.external_spools,
+      ].find((candidate) => candidate.unique_id === trayId || candidate.entity_id === trayId);
+      haTray = tray;
+      if (haTray?.empty === true) {
+        return NextResponse.json({ error: '该料盘未安装耗材，请先安装料盘后再分配。' }, { status: 409 });
+      }
+    }
+
     const updatedSpool = await client.assignSpoolToTray(spoolId, trayId);
+    const kValue = parseKValue(updatedSpool.comment);
+
+    console.info('[Spool assignment] spool metadata', {
+      spool_id: spoolId,
+      comment: updatedSpool.comment || null,
+      parsed_k_value: kValue ?? null,
+    });
+
+    if (haClient) {
+      console.info('[Spool assignment] HA tray lookup', {
+        spool_id: spoolId,
+        requested_tray: trayId,
+        matched_tray: haTray?.entity_id || null,
+        brand: bambuTrayBrand(updatedSpool.filament.vendor?.name),
+      });
+      if (haTray) {
+        await haClient.setBambuTrayBrand(
+          haTray,
+          bambuTrayBrand(updatedSpool.filament.vendor?.name),
+          bambuTrayFilamentSettings(
+            updatedSpool.filament.material,
+            updatedSpool.filament.color_hex,
+            updatedSpool.filament.name,
+            updatedSpool.filament.vendor?.name,
+            kValue,
+          ),
+        );
+      }
+    }
 
     // Log activity
     await createActivityLog({
