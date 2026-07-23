@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { AddPrinterDialog } from '@/components/add-printer-dialog';
 import type { AlertConfig, ActiveAlert, AvailableGroup } from '@/lib/alerts';
+import { useI18n } from '@/lib/i18n';
 
 interface FilterField {
   key: string;
@@ -66,6 +67,7 @@ interface VirtualPrinter {
 }
 
 function SettingsContent() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -144,7 +146,7 @@ function SettingsContent() {
     const error = searchParams.get('error');
 
     if (success === 'ha_connected') {
-      toast.success('Home Assistant connected successfully');
+      toast.success(t('settings.haConnected'));
       window.history.replaceState({}, '', '/settings');
     } else if (error) {
       const errorMessages: Record<string, string> = {
@@ -153,7 +155,7 @@ function SettingsContent() {
         token_exchange_failed: 'Failed to exchange authorization code',
         oauth_failed: 'OAuth authentication failed',
       };
-      toast.error(errorMessages[error] || 'Authentication failed');
+      toast.error(errorMessages[error] || t('settings.authFailed'));
       window.history.replaceState({}, '', '/settings');
     }
   }, [searchParams]);
@@ -214,7 +216,7 @@ function SettingsContent() {
         setKValuePresets(data.kValuePresets);
       }
     } catch {
-      toast.error('Failed to load settings');
+      toast.error(t('settings.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -246,10 +248,10 @@ function SettingsContent() {
         throw new Error('Failed to remove printer');
       }
 
-      toast.success('Printer removed');
+      toast.success(t('settings.printerRemoved'));
       fetchPrinters();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to remove printer');
+      toast.error(err instanceof Error ? err.message : t('settings.printerRemoveFailed'));
     } finally {
       setRemovingPrinter(null);
     }
@@ -268,10 +270,10 @@ function SettingsContent() {
         throw new Error('Failed to re-add printer');
       }
 
-      toast.success('Printer added back to SpoolmanSync');
+      toast.success(t('settings.printerReAdded'));
       fetchPrinters();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to re-add printer');
+      toast.error(err instanceof Error ? err.message : t('settings.printerReAddFailed'));
     } finally {
       setReaddingPrinter(null);
     }
@@ -279,7 +281,7 @@ function SettingsContent() {
 
   const connectHomeAssistant = async () => {
     if (!haUrl) {
-      toast.error('Please enter your Home Assistant URL');
+      toast.error(t('settings.enterHaUrl'));
       return;
     }
 
@@ -294,7 +296,7 @@ function SettingsContent() {
 
       window.location.href = data.authUrl;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to connect to Home Assistant');
+      toast.error(err instanceof Error ? err.message : t('settings.haConnectFailed'));
       setConnecting(false);
     }
   };
@@ -312,11 +314,11 @@ function SettingsContent() {
         throw new Error('Failed to disconnect');
       }
 
-      toast.success('Home Assistant disconnected');
+      toast.success(t('settings.haDisconnected'));
       setSettings(prev => prev ? { ...prev, homeassistant: null } : null);
       setHaUrl('');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to disconnect');
+      toast.error(err instanceof Error ? err.message : t('settings.disconnectFailed'));
     } finally {
       setSaving(null);
     }
@@ -327,7 +329,7 @@ function SettingsContent() {
       await navigator.clipboard.writeText(text);
       toast.success(`${label} copied to clipboard`);
     } catch {
-      toast.error('Failed to copy to clipboard');
+      toast.error(t('settings.copyFailed'));
     }
   };
 
@@ -346,7 +348,7 @@ function SettingsContent() {
       const data = await res.json();
       setRevealedPassword(data.password ?? '');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to reveal password');
+      toast.error(err instanceof Error ? err.message : t('settings.revealFailed'));
     } finally {
       setRevealingPassword(false);
     }
@@ -354,7 +356,7 @@ function SettingsContent() {
 
   const reconnectHomeAssistant = async () => {
     if (!reconnectPassword) {
-      toast.error('Please enter the Home Assistant password');
+      toast.error(t('settings.enterHaPassword'));
       return;
     }
 
@@ -376,7 +378,7 @@ function SettingsContent() {
         throw new Error(data.error || 'Failed to reconnect');
       }
 
-      toast.success('Reconnected to Home Assistant');
+      toast.success(t('settings.reconnected'));
       setReconnectPassword('');
       setReconnectError('');
       fetchSettings();
@@ -406,10 +408,10 @@ function SettingsContent() {
         throw new Error(data.error || 'Failed to save');
       }
 
-      toast.success('Spoolman connected successfully');
+      toast.success(t('settings.spoolmanConnected'));
       fetchSettings();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to connect to Spoolman');
+      toast.error(err instanceof Error ? err.message : t('settings.spoolmanConnectFailed'));
     } finally {
       setSaving(null);
     }
@@ -445,9 +447,9 @@ function SettingsContent() {
       }
 
       setEnabledFilters(newConfig);
-      toast.success('Filter settings saved');
+      toast.success(t('settings.filtersSaved'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save filter settings');
+      toast.error(err instanceof Error ? err.message : t('settings.filtersSaveFailed'));
     } finally {
       setSavingFilters(false);
     }
@@ -463,9 +465,9 @@ function SettingsContent() {
       });
       if (!res.ok) throw new Error('保存 K 值设置失败');
       setKValuePresets(presets);
-      toast.success('K 值设置已保存');
+      toast.success(t('settings.kValuesSaved'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : '保存 K 值设置失败');
+      toast.error(err instanceof Error ? err.message : t('settings.kValuesSaveFailed'));
     } finally {
       setSavingKValues(false);
     }
@@ -475,11 +477,11 @@ function SettingsContent() {
     const nickname = newKValueNickname.trim();
     const value = Number(newKValue);
     if (!nickname || !Number.isFinite(value)) {
-      toast.error('请输入昵称和有效的 K 值');
+      toast.error(t('settings.kValueInvalid'));
       return;
     }
     if (kValuePresets.some((preset) => preset.nickname === nickname)) {
-      toast.error('K 值昵称已存在');
+      toast.error(t('settings.kNicknameExists'));
       return;
     }
     void saveKValuePresets([...kValuePresets, { nickname, value }]);
@@ -535,9 +537,9 @@ function SettingsContent() {
 
       const data = await res.json();
       if (data.alerts) setActiveAlerts(data.alerts);
-      toast.success('Alert settings saved');
+      toast.success(t('settings.alertsSaved'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to save alert settings');
+      toast.error(err instanceof Error ? err.message : t('settings.alertsSaveFailed'));
     } finally {
       setSavingAlerts(false);
     }
@@ -570,7 +572,7 @@ function SettingsContent() {
   const createVirtualPrinter = async () => {
     const name = newVpName.trim();
     if (!name) {
-      toast.error('Please enter a name for the virtual printer');
+      toast.error(t('settings.nameRequired'));
       return;
     }
 
@@ -587,12 +589,12 @@ function SettingsContent() {
         throw new Error(data.error || 'Failed to create virtual printer');
       }
 
-      toast.success('Virtual printer created');
+      toast.success(t('settings.virtualPrinterCreated'));
       setNewVpName('');
       setNewVpSlotCount(1);
       fetchVirtualPrinters();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to create virtual printer');
+      toast.error(err instanceof Error ? err.message : t('settings.virtualPrinterCreateFailed'));
     } finally {
       setCreatingVp(false);
     }
@@ -619,7 +621,7 @@ function SettingsContent() {
       toast.success(successMessage);
       fetchVirtualPrinters();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to update virtual printer');
+      toast.error(err instanceof Error ? err.message : t('settings.virtualPrinterUpdateFailed'));
     } finally {
       setMutatingVp(null);
     }
@@ -628,7 +630,7 @@ function SettingsContent() {
   const renameVirtualPrinter = (vp: VirtualPrinter) => {
     const name = (editingVpName[vp.id] ?? vp.name).trim();
     if (!name) {
-      toast.error('Name cannot be empty');
+      toast.error(t('settings.nameEmpty'));
       return;
     }
     if (name === vp.name) return;
@@ -637,7 +639,7 @@ function SettingsContent() {
 
   const addVirtualPrinterSlot = (vp: VirtualPrinter) => {
     if (vp.slots.length >= 16) {
-      toast.error('Maximum of 16 slots');
+      toast.error(t('settings.maxSlots'));
       return;
     }
     patchVirtualPrinter(vp.id, { action: 'addSlot' }, 'Slot added');
@@ -664,10 +666,10 @@ function SettingsContent() {
         throw new Error(data.error || 'Failed to delete virtual printer');
       }
 
-      toast.success('Virtual printer deleted');
+      toast.success(t('settings.virtualPrinterDeleted'));
       fetchVirtualPrinters();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete virtual printer');
+      toast.error(err instanceof Error ? err.message : t('settings.virtualPrinterDeleteFailed'));
     } finally {
       setMutatingVp(null);
     }
@@ -690,7 +692,7 @@ function SettingsContent() {
     <div className="min-h-screen bg-background">
       <Nav />
       <main className="w-full max-w-2xl mx-auto py-6 px-3 sm:px-4 md:px-6">
-        <h1 className="text-xl sm:text-2xl font-bold mb-6">Settings</h1>
+        <h1 className="text-xl sm:text-2xl font-bold mb-6">{t('settings.title')}</h1>
 
         <div className="space-y-6">
           {/* Home Assistant Settings */}
@@ -702,24 +704,24 @@ function SettingsContent() {
                     : settings?.homeassistant?.error ? 'bg-orange-500'
                     : 'bg-gray-300'
                 }`} />
-                <CardTitle>Home Assistant</CardTitle>
+                <CardTitle>{t('settings.ha')}</CardTitle>
                 {settings?.embeddedMode && (
                   <span className="text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded">
-                    Embedded
+                    {t('settings.embedded')}
                   </span>
                 )}
                 {settings?.addonMode && (
                   <span className="text-xs bg-green-100 dark:bg-green-900 text-green-700 dark:text-green-300 px-2 py-0.5 rounded">
-                    Add-on
+                    {t('settings.addon')}
                   </span>
                 )}
               </div>
               <CardDescription>
                 {settings?.addonMode
-                  ? 'Connected automatically via Home Assistant Supervisor.'
+                  ? t('settings.addonDesc')
                   : settings?.embeddedMode
-                    ? 'Home Assistant is bundled with SpoolmanSync and auto-configured.'
-                    : 'Connect to your Home Assistant instance to discover Bambu Lab printers.'}
+                    ? t('settings.embeddedDesc')
+                    : t('settings.haDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -729,23 +731,22 @@ function SettingsContent() {
                   {settings?.homeassistant ? (
                     <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                       <div>
-                        <p className="font-medium text-green-600 dark:text-green-400">Connected via Supervisor</p>
+                        <p className="font-medium text-green-600 dark:text-green-400">{t('settings.connectedSupervisor')}</p>
                         <p className="text-sm text-muted-foreground">
-                          SpoolmanSync is running as a Home Assistant add-on with automatic API access.
+                          {t('settings.addonRunning')}
                         </p>
                       </div>
                     </div>
                   ) : (
                     <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                      <p className="font-medium text-yellow-700 dark:text-yellow-400">Connecting to Home Assistant...</p>
+                      <p className="font-medium text-yellow-700 dark:text-yellow-400">{t('settings.connecting')}</p>
                       <p className="text-sm text-yellow-600 dark:text-yellow-500 mt-1">
-                        The Supervisor connection is being established.
+                        {t('settings.establishingSupervisor')}
                       </p>
                     </div>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    The Bambu Lab integration must be installed via HACS in your Home Assistant instance.
-                    Add your printers in the Bambu Lab section below.
+                    {t('settings.hacsRequired')}
                   </p>
                 </div>
               ) : settings?.embeddedMode ? (
@@ -756,7 +757,7 @@ function SettingsContent() {
                     <>
                       <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                         <div>
-                          <p className="font-medium text-green-600 dark:text-green-400">Connected</p>
+                          <p className="font-medium text-green-600 dark:text-green-400">{t('settings.connected')}</p>
                           <p className="text-sm text-muted-foreground">{settings.homeassistant.url}</p>
                         </div>
                       </div>
@@ -765,9 +766,9 @@ function SettingsContent() {
                       {settings.homeassistant.adminCredentials ? (
                         <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg space-y-3">
                           <div>
-                            <p className="font-medium text-blue-700 dark:text-blue-300">Home Assistant Login</p>
+                            <p className="font-medium text-blue-700 dark:text-blue-300">{t('settings.login')}</p>
                             <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-                              Use these credentials to access Home Assistant directly at{' '}
+                              {t('settings.loginUse')}{' '}
                               <a
                                 href="http://localhost:8123"
                                 target="_blank"
@@ -781,7 +782,7 @@ function SettingsContent() {
 
                           <div className="grid gap-2">
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
-                              <span className="text-sm text-muted-foreground">Username:</span>
+                              <span className="text-sm text-muted-foreground">{t('settings.username')}:</span>
                               <div className="flex items-center gap-2">
                                 <code className="px-2 py-1 bg-background rounded text-sm truncate max-w-[150px] sm:max-w-none">
                                   {settings.homeassistant.adminCredentials.username}
@@ -792,13 +793,13 @@ function SettingsContent() {
                                   className="h-7 px-2 shrink-0"
                                   onClick={() => copyToClipboard(settings.homeassistant!.adminCredentials!.username, 'Username')}
                                 >
-                                  Copy
+                                  {t('settings.copy')}
                                 </Button>
                               </div>
                             </div>
                             {settings.homeassistant.adminCredentials.hasPassword ? (
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
-                                <span className="text-sm text-muted-foreground">Password:</span>
+                                <span className="text-sm text-muted-foreground">{t('settings.password')}:</span>
                                 <div className="flex items-center gap-2">
                                   <code className="px-2 py-1 bg-background rounded text-sm font-mono truncate max-w-[150px] sm:max-w-none">
                                     {revealedPassword !== null ? revealedPassword : '••••••••••••'}
@@ -811,7 +812,7 @@ function SettingsContent() {
                                         className="h-7 px-2 shrink-0"
                                         onClick={() => setRevealedPassword(null)}
                                       >
-                                        Hide
+                                        {t('settings.hide')}
                                       </Button>
                                       <Button
                                         variant="ghost"
@@ -819,7 +820,7 @@ function SettingsContent() {
                                         className="h-7 px-2 shrink-0"
                                         onClick={() => copyToClipboard(revealedPassword, 'Password')}
                                       >
-                                        Copy
+                                        {t('settings.copy')}
                                       </Button>
                                     </>
                                   ) : (
@@ -830,30 +831,30 @@ function SettingsContent() {
                                       onClick={revealPassword}
                                       disabled={revealingPassword}
                                     >
-                                      {revealingPassword ? 'Revealing...' : 'Reveal password'}
+                                      {revealingPassword ? t('settings.revealing') : t('settings.revealPassword')}
                                     </Button>
                                   )}
                                 </div>
                               </div>
                             ) : (
                               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-2">
-                                <span className="text-sm text-muted-foreground">Password:</span>
+                                <span className="text-sm text-muted-foreground">{t('settings.password')}:</span>
                                 <span className="text-sm text-muted-foreground italic">
-                                  No stored password available
+                                  {t('settings.noPassword')}
                                 </span>
                               </div>
                             )}
                           </div>
 
                           <p className="text-xs text-muted-foreground pt-2 border-t border-blue-200 dark:border-blue-800">
-                            If you change the password in Home Assistant, you can reconnect here using the new password.
+                            {t('settings.passwordChanged')}
                           </p>
                         </div>
                       ) : (
                         <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                          <p className="font-medium text-blue-700 dark:text-blue-300">Home Assistant Login</p>
+                          <p className="font-medium text-blue-700 dark:text-blue-300">{t('settings.login')}</p>
                           <p className="text-sm text-blue-600 dark:text-blue-400 mt-1">
-                            No stored admin credentials are available. You can still access Home Assistant directly at{' '}
+                            {t('settings.noCredentials')}{' '}
                             <a
                               href="http://localhost:8123"
                               target="_blank"
@@ -871,17 +872,15 @@ function SettingsContent() {
                     // State 3: Connection broken (token invalid, password may have changed)
                     <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg space-y-3">
                       <div>
-                        <p className="font-medium text-orange-700 dark:text-orange-400">Connection Lost</p>
+                        <p className="font-medium text-orange-700 dark:text-orange-400">{t('settings.connectionLost')}</p>
                         <p className="text-sm text-orange-600 dark:text-orange-500 mt-1">
-                          The Home Assistant connection token is no longer valid.
-                          This usually happens after changing the HA password.
-                          Enter your current Home Assistant credentials to reconnect.
+                          {t('settings.tokenInvalid')}
                         </p>
                       </div>
 
                       <div className="space-y-3">
                         <div className="space-y-1">
-                          <Label htmlFor="reconnect-username">Username</Label>
+                          <Label htmlFor="reconnect-username">{t('settings.username')}</Label>
                           <Input
                             id="reconnect-username"
                             value={reconnectUsername}
@@ -889,13 +888,13 @@ function SettingsContent() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label htmlFor="reconnect-password">Password</Label>
+                          <Label htmlFor="reconnect-password">{t('settings.password')}</Label>
                           <Input
                             id="reconnect-password"
                             type="password"
                             value={reconnectPassword}
                             onChange={(e) => setReconnectPassword(e.target.value)}
-                            placeholder="Enter your HA password"
+                            placeholder={t('settings.enterPassword')}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') reconnectHomeAssistant();
                             }}
@@ -908,36 +907,34 @@ function SettingsContent() {
                           onClick={reconnectHomeAssistant}
                           disabled={reconnecting || !reconnectPassword}
                         >
-                          {reconnecting ? 'Reconnecting...' : 'Reconnect'}
+                          {reconnecting ? t('settings.reconnecting') : t('settings.reconnect')}
                         </Button>
                       </div>
                     </div>
                   ) : !settings?.homeassistant ? (
                     // State 2: HA still starting up (no connection yet)
                     <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                      <p className="font-medium text-yellow-700 dark:text-yellow-400">Connecting to Home Assistant...</p>
+                      <p className="font-medium text-yellow-700 dark:text-yellow-400">{t('settings.connecting')}</p>
                       <p className="text-sm text-yellow-600 dark:text-yellow-500 mt-1">
-                        Home Assistant is starting up and being configured automatically.
-                        This may take up to a minute on first run.
+                        {t('settings.starting')}
                       </p>
                       <div className="flex items-center gap-2 mt-3">
                         <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-yellow-600" />
                         <Button variant="outline" size="sm" onClick={fetchSettings}>
-                          Refresh Status
+                          {t('settings.refreshStatus')}
                         </Button>
                       </div>
                     </div>
                   ) : null}
                   <p className="text-xs text-muted-foreground">
-                    The embedded Home Assistant is pre-configured with HACS and the Bambu Lab integration.
-                    Add your printers in the Bambu Lab section below.
+                    {t('settings.embeddedInfo')}
                   </p>
                 </div>
               ) : settings?.homeassistant ? (
                 // External mode - connected
                 <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
                   <div>
-                    <p className="font-medium">Connected</p>
+                    <p className="font-medium">{t('settings.connected')}</p>
                     <p className="text-sm text-muted-foreground">{settings.homeassistant.url}</p>
                   </div>
                   <Button
@@ -945,14 +942,14 @@ function SettingsContent() {
                     onClick={disconnectHomeAssistant}
                     disabled={saving === 'ha'}
                   >
-                    {saving === 'ha' ? 'Disconnecting...' : 'Disconnect'}
+                    {saving === 'ha' ? t('settings.disconnecting') : t('settings.disconnect')}
                   </Button>
                 </div>
               ) : (
                 // External mode - not connected
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="ha-url">Home Assistant URL</Label>
+                    <Label htmlFor="ha-url">{t('settings.haUrl')}</Label>
                     <Input
                       id="ha-url"
                       placeholder="http://homeassistant.local:8123"
@@ -963,11 +960,11 @@ function SettingsContent() {
                       Enter your Home Assistant URL, then click Connect to authorize.
                     </p>
                   </div>
-                  <Button
+                    <Button
                     onClick={connectHomeAssistant}
                     disabled={connecting || !haUrl}
                   >
-                    {connecting ? 'Redirecting...' : 'Connect with Home Assistant'}
+                      {connecting ? t('settings.connecting') : t('settings.haConnect')}
                   </Button>
                 </>
               )}
@@ -982,13 +979,13 @@ function SettingsContent() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Bambu Lab Printers</CardTitle>
+                    <CardTitle>{t('settings.printers')}</CardTitle>
                     <CardDescription>
-                      Configure your Bambu Lab printers to sync with Spoolman.
+                      {t('settings.printersDesc')}
                     </CardDescription>
                   </div>
                   <Button onClick={() => setAddPrinterOpen(true)}>
-                    Add Printer
+                    {t('settings.addPrinter')}
                   </Button>
                 </div>
               </CardHeader>
@@ -996,8 +993,8 @@ function SettingsContent() {
                 <div className="space-y-3">
                   {printers.length === 0 && hiddenPrinters.length === 0 && (
                     <div className="text-center py-6 text-muted-foreground">
-                      <p>No printers configured yet.</p>
-                      <p className="text-sm mt-1">Click &quot;Add Printer&quot; to connect your Bambu Lab printer.</p>
+                      <p>{t('settings.noPrinters')}</p>
+                      <p className="text-sm mt-1">{t('settings.addPrinterPrompt')}</p>
                     </div>
                   )}
                   {printers.map((printer) => (
@@ -1009,7 +1006,7 @@ function SettingsContent() {
                         <p className="font-medium">{printer.title}</p>
                         <p className="text-sm text-muted-foreground">
                           {printer.state === 'loaded' ? (
-                            <span className="text-green-600 dark:text-green-400">Connected</span>
+                            <span className="text-green-600 dark:text-green-400">{t('settings.connected')}</span>
                           ) : (
                             <span className="text-yellow-600 dark:text-yellow-400">{printer.state}</span>
                           )}
@@ -1021,14 +1018,14 @@ function SettingsContent() {
                         onClick={() => removePrinter(printer.entry_id)}
                         disabled={removingPrinter === printer.entry_id}
                       >
-                        {removingPrinter === printer.entry_id ? 'Removing...' : 'Remove'}
+                        {removingPrinter === printer.entry_id ? t('settings.removing') : t('settings.remove')}
                       </Button>
                     </div>
                   ))}
                   {hiddenPrinters.length > 0 && (
                     <div className={printers.length > 0 ? 'pt-2 border-t' : ''}>
                       <p className="text-xs text-muted-foreground mb-2">
-                        Removed from SpoolmanSync (still in Home Assistant):
+                        {t('settings.removedFromSync')}
                       </p>
                       {hiddenPrinters.map((printer) => (
                         <div
@@ -1044,7 +1041,7 @@ function SettingsContent() {
                             onClick={() => readdPrinter(printer.entry_id)}
                             disabled={readdingPrinter === printer.entry_id}
                           >
-                            {readdingPrinter === printer.entry_id ? 'Adding...' : 'Re-add'}
+                            {readdingPrinter === printer.entry_id ? t('settings.adding') : t('settings.reAdd')}
                           </Button>
                         </div>
                       ))}
@@ -1052,7 +1049,7 @@ function SettingsContent() {
                   )}
                   {settings?.webhookConfigured && (
                     <p className="text-xs text-muted-foreground pt-2 border-t">
-                      Webhook authentication: enabled
+                      {t('settings.webhookEnabled')}
                     </p>
                   )}
                 </div>
@@ -1065,18 +1062,17 @@ function SettingsContent() {
           {/* Virtual Printers */}
           <Card>
             <CardHeader>
-              <CardTitle>Virtual Printers</CardTitle>
+              <CardTitle>{t('settings.virtualPrinters')}</CardTitle>
               <CardDescription>
-                Define storage locations such as filament dryers, dry boxes, or shelves with assignable slots.
-                They appear on the dashboard as assignable slots for QR/NFC inventory management and are not tracked for usage.
+                {t('settings.virtualPrintersDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 {virtualPrinters.length === 0 && (
                   <div className="text-center py-6 text-muted-foreground">
-                    <p>No virtual printers yet.</p>
-                    <p className="text-sm mt-1">Create one below to track filament that isn&apos;t in a printer.</p>
+                    <p>{t('settings.noVirtualPrinters')}</p>
+                    <p className="text-sm mt-1">{t('settings.createVirtualPrompt')}</p>
                   </div>
                 )}
 
@@ -1102,13 +1098,13 @@ function SettingsContent() {
                         onClick={() => deleteVirtualPrinter(vp)}
                         disabled={mutatingVp === vp.id}
                       >
-                        Delete
+                        {t('settings.delete')}
                       </Button>
                     </div>
 
                     <div>
                       <p className="text-xs text-muted-foreground mb-2">
-                        {vp.slots.length} slot{vp.slots.length !== 1 ? 's' : ''}
+                        {vp.slots.length} {t('settings.slots')}
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {vp.slots.map((slot) => (
@@ -1116,10 +1112,10 @@ function SettingsContent() {
                             key={slot.id}
                             className="inline-flex items-center gap-1 px-2 py-1 bg-background rounded text-sm"
                           >
-                            Tray {slot.number}
+                            {t('settings.tray')} {slot.number}
                             <button
                               type="button"
-                              aria-label={`Remove Tray ${slot.number}`}
+                              aria-label={`${t('settings.removeTray')} ${slot.number}`}
                               className="text-muted-foreground hover:text-foreground disabled:opacity-50"
                               onClick={() => removeVirtualPrinterSlot(vp, slot.number)}
                               disabled={mutatingVp === vp.id}
@@ -1135,7 +1131,7 @@ function SettingsContent() {
                           onClick={() => addVirtualPrinterSlot(vp)}
                           disabled={mutatingVp === vp.id || vp.slots.length >= 16}
                         >
-                          + Add slot
+                          + {t('settings.addSlot')}
                         </Button>
                       </div>
                     </div>
@@ -1144,10 +1140,10 @@ function SettingsContent() {
 
                 {/* Create new virtual printer */}
                 <div className="pt-3 border-t space-y-3">
-                  <p className="text-sm font-medium">Add a virtual printer</p>
+                  <p className="text-sm font-medium">{t('settings.addVirtualPrinter')}</p>
                   <div className="flex flex-col sm:flex-row gap-2 sm:items-end">
                     <div className="flex-1 space-y-1">
-                      <Label htmlFor="new-vp-name">Name</Label>
+                      <Label htmlFor="new-vp-name">{t('settings.name')}</Label>
                       <Input
                         id="new-vp-name"
                         placeholder="e.g., Dry Box A"
@@ -1167,12 +1163,12 @@ function SettingsContent() {
                       )}
                       {existingLocations.length > 0 && (
                         <p className="text-xs text-muted-foreground">
-                          Tip: pick an existing Spoolman location to keep names in sync.
+                          {t('settings.locationTip')}
                         </p>
                       )}
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="new-vp-slots">Slots</Label>
+                      <Label htmlFor="new-vp-slots">{t('settings.slotsCount')}</Label>
                       <Input
                         id="new-vp-slots"
                         type="number"
@@ -1190,7 +1186,7 @@ function SettingsContent() {
                       onClick={createVirtualPrinter}
                       disabled={creatingVp || !newVpName.trim()}
                     >
-                      {creatingVp ? 'Creating...' : 'Create'}
+                      {creatingVp ? t('settings.creating') : t('settings.create')}
                     </Button>
                   </div>
                 </div>
@@ -1205,15 +1201,15 @@ function SettingsContent() {
             <CardHeader>
               <div className="flex items-center gap-2">
                 <div className={`h-3 w-3 rounded-full ${settings?.spoolman ? 'bg-green-500' : 'bg-gray-300'}`} />
-                <CardTitle>Spoolman</CardTitle>
+                <CardTitle>{t('settings.spoolman')}</CardTitle>
               </div>
               <CardDescription>
-                Connect to your Spoolman instance to manage filament spools.
+                {t('settings.spoolmanDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="spoolman-url">Spoolman URL</Label>
+                <Label htmlFor="spoolman-url">{t('settings.spoolmanUrl')}</Label>
                 <Input
                   id="spoolman-url"
                   placeholder="http://localhost:7912"
@@ -1225,7 +1221,7 @@ function SettingsContent() {
                 onClick={saveSpoolmanSettings}
                 disabled={saving === 'spoolman' || !spoolmanUrl}
               >
-                {saving === 'spoolman' ? 'Connecting...' : settings?.spoolman ? 'Update Connection' : 'Connect'}
+                {saving === 'spoolman' ? t('settings.connecting') : t('settings.spoolmanConnect')}
               </Button>
             </CardContent>
           </Card>
@@ -1236,15 +1232,15 @@ function SettingsContent() {
               <Separator />
               <Card>
                 <CardHeader>
-                  <CardTitle>K 值预设</CardTitle>
-                  <CardDescription>为常用材料校准值设置昵称，添加或修改料盘时可以选择。</CardDescription>
+                  <CardTitle>{t('settings.kPresets')}</CardTitle>
+                  <CardDescription>{t('settings.kPresetsDesc')}</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {kValuePresets.map((preset, index) => (
                     <div key={`${preset.nickname}-${index}`} className="flex items-center gap-2">
                       <Input
                         value={preset.nickname}
-                        aria-label="K 值昵称"
+                        aria-label={t('settings.kNickname')}
                         onChange={(e) => {
                           const next = [...kValuePresets];
                           next[index] = { ...preset, nickname: e.target.value };
@@ -1256,7 +1252,7 @@ function SettingsContent() {
                         type="number"
                         step="0.0001"
                         value={preset.value}
-                        aria-label="K 值"
+                        aria-label={t('settings.kValue')}
                         onChange={(e) => {
                           const next = [...kValuePresets];
                           next[index] = { ...preset, value: Number(e.target.value) };
@@ -1272,26 +1268,26 @@ function SettingsContent() {
                         disabled={savingKValues}
                         onClick={() => void saveKValuePresets(kValuePresets.filter((_, itemIndex) => itemIndex !== index))}
                       >
-                        删除
+                        {t('settings.deletePreset')}
                       </Button>
                     </div>
                   ))}
                   <div className="flex items-center gap-2 border-t pt-3">
                     <Input
-                      placeholder="昵称，例如 PLA"
+                      placeholder={t('settings.nicknamePlaceholder')}
                       value={newKValueNickname}
                       onChange={(e) => setNewKValueNickname(e.target.value)}
                     />
                     <Input
                       type="number"
                       step="0.0001"
-                      placeholder="K 值"
+                      placeholder={t('settings.kValue')}
                       value={newKValue}
                       onChange={(e) => setNewKValue(e.target.value)}
                       className="w-32"
                     />
                     <Button type="button" onClick={addKValuePreset} disabled={savingKValues}>
-                      添加
+                      {t('settings.add')}
                     </Button>
                   </div>
                 </CardContent>
@@ -1299,9 +1295,9 @@ function SettingsContent() {
               <Separator />
               <Card>
                 <CardHeader>
-                  <CardTitle>Dashboard Display</CardTitle>
+                  <CardTitle>{t('settings.dashboardDisplay')}</CardTitle>
                   <CardDescription>
-                    Configure what information is shown on the dashboard spool cards.
+                    {t('settings.dashboardDisplayDesc')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -1319,19 +1315,19 @@ function SettingsContent() {
                             body: JSON.stringify({ type: 'show_spool_location', enabled }),
                           });
                           if (!res.ok) throw new Error();
-                          toast.success(enabled ? 'Spool location enabled on dashboard' : 'Spool location hidden on dashboard');
+                          toast.success(enabled ? t('settings.locationEnabled') : t('settings.locationHidden'));
                         } catch {
                           setShowSpoolLocation(!enabled);
-                          toast.error('Failed to save setting');
+                          toast.error(t('settings.saveError'));
                         }
                       }}
                     />
                     <div>
                       <Label htmlFor="show-spool-location" className="text-sm font-medium cursor-pointer">
-                        Show spool location
+                        {t('settings.showLocation')}
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        Display the Spoolman location field on each spool card (e.g., shelf, dry box, bin number)
+                        {t('settings.showLocationDesc')}
                       </p>
                     </div>
                   </div>
@@ -1350,19 +1346,19 @@ function SettingsContent() {
                             body: JSON.stringify({ type: 'never_auto_clear_tray', enabled }),
                           });
                           if (!res.ok) throw new Error();
-                          toast.success(enabled ? 'Tray assignments will no longer be auto-cleared' : 'Auto-clear of tray assignments re-enabled');
+                          toast.success(enabled ? t('settings.neverClearOn') : t('settings.neverClearOff'));
                         } catch {
                           setNeverAutoClearTray(!enabled);
-                          toast.error('Failed to save setting');
+                          toast.error(t('settings.saveError'));
                         }
                       }}
                     />
                     <div>
                       <Label htmlFor="never-auto-clear-tray" className="text-sm font-medium cursor-pointer">
-                        Never auto-clear tray assignments
+                        {t('settings.neverClear')}
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        When enabled, SpoolmanSync will not remove a spool from a tray when the printer briefly reports it empty. Useful for LAN-only setups where the AMS occasionally reports false empty states.
+                        {t('settings.neverClearDesc')}
                       </p>
                     </div>
                   </div>
@@ -1381,19 +1377,19 @@ function SettingsContent() {
                             body: JSON.stringify({ type: 'sync_spoolman_location', enabled }),
                           });
                           if (!res.ok) throw new Error();
-                          toast.success(enabled ? 'Spool locations will sync to Spoolman' : 'Spool location sync disabled');
+                          toast.success(enabled ? t('settings.syncLocationOn') : t('settings.syncLocationOff'));
                         } catch {
                           setSyncSpoolmanLocation(!enabled);
-                          toast.error('Failed to save setting');
+                          toast.error(t('settings.saveError'));
                         }
                       }}
                     />
                     <div>
                       <Label htmlFor="sync-spoolman-location" className="text-sm font-medium cursor-pointer">
-                        Sync spool locations to Spoolman
+                        {t('settings.syncLocation')}
                       </Label>
                       <p className="text-xs text-muted-foreground">
-                        When enabled, assigning a spool to a tray writes Spoolman&apos;s native location field — real printers as &quot;Printer - AMS 1 Tray 3&quot; and virtual printers as their name — so Spoolman reporting shows where every spool is (in a printer or in storage). Only spools you assign/unassign are affected; a location you set by hand is left alone. Applies to future assignments (existing ones update as spools are re-assigned).
+                        {t('settings.syncLocationDesc')}
                       </p>
                     </div>
                   </div>
@@ -1408,22 +1404,21 @@ function SettingsContent() {
               <Separator />
               <Card>
                 <CardHeader>
-                  <CardTitle>Spool Filter Configuration</CardTitle>
+                  <CardTitle>{t('settings.filterConfig')}</CardTitle>
                   <CardDescription>
-                    Choose which fields appear as filter dropdowns when assigning spools to trays.
-                    The search box always searches all fields regardless of this setting.
+                    {t('settings.filterConfigDesc')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {filterFields.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                      Loading filter options...
+                      {t('settings.loadingFilters')}
                     </p>
                   ) : (
                     <div className="space-y-4">
                       {/* Built-in fields */}
                       <div>
-                        <h4 className="text-sm font-medium mb-2 text-muted-foreground">Built-in Fields</h4>
+                        <h4 className="text-sm font-medium mb-2 text-muted-foreground">{t('settings.builtInFields')}</h4>
                         <div className="space-y-3">
                           {filterFields.filter(f => f.builtIn).map((field) => (
                             <div key={field.key} className="flex items-center space-x-3">
@@ -1442,11 +1437,11 @@ function SettingsContent() {
                                 </Label>
                                 {field.values.length > 0 ? (
                                   <p className="text-xs text-muted-foreground">
-                                    {field.values.length} value{field.values.length !== 1 ? 's' : ''}: {field.values.slice(0, 3).join(', ')}{field.values.length > 3 ? '...' : ''}
+                                    {field.values.length} {t('settings.values')}: {field.values.slice(0, 3).join(', ')}{field.values.length > 3 ? '...' : ''}
                                   </p>
                                 ) : (
                                   <p className="text-xs text-muted-foreground italic">
-                                    No values set on any spools
+                                    {t('settings.noValues')}
                                   </p>
                                 )}
                               </div>
@@ -1458,7 +1453,7 @@ function SettingsContent() {
                       {/* Extra fields (if any) */}
                       {filterFields.some(f => !f.builtIn) && (
                         <div>
-                          <h4 className="text-sm font-medium mb-2 text-muted-foreground">Custom Extra Fields</h4>
+                          <h4 className="text-sm font-medium mb-2 text-muted-foreground">{t('settings.customFields')}</h4>
                           <div className="space-y-3">
                             {filterFields.filter(f => !f.builtIn).map((field) => (
                               <div key={field.key} className="flex items-center space-x-3">
@@ -1477,11 +1472,11 @@ function SettingsContent() {
                                   </Label>
                                   {field.values.length > 0 ? (
                                     <p className="text-xs text-muted-foreground">
-                                      {field.values.length} value{field.values.length !== 1 ? 's' : ''}: {field.values.slice(0, 3).join(', ')}{field.values.length > 3 ? '...' : ''}
+                                      {field.values.length} {t('settings.values')}: {field.values.slice(0, 3).join(', ')}{field.values.length > 3 ? '...' : ''}
                                     </p>
                                   ) : (
                                     <p className="text-xs text-muted-foreground italic">
-                                      No values set on any spools
+                                      {t('settings.noValues')}
                                     </p>
                                   )}
                                 </div>
@@ -1493,7 +1488,7 @@ function SettingsContent() {
 
                       {enabledFilters.length === 0 && (
                         <p className="text-xs text-muted-foreground mt-2">
-                          No filters enabled. Only the search box will be shown.
+                          {t('settings.noFilters')}
                         </p>
                       )}
                     </div>
@@ -1510,14 +1505,13 @@ function SettingsContent() {
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <CardTitle>Low Filament Alerts</CardTitle>
+                    <CardTitle>{t('settings.alerts')}</CardTitle>
                     {activeAlerts.length > 0 && (
                       <Badge variant="destructive">{activeAlerts.length}</Badge>
                     )}
                   </div>
                   <CardDescription>
-                    Get notified when you&apos;re down to your last spool of a filament type and it&apos;s running low.
-                    Alerts are checked after each print and sent as Home Assistant persistent notifications.
+                    {t('settings.alertsDesc')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -1530,7 +1524,7 @@ function SettingsContent() {
                       }
                     />
                     <Label htmlFor="alerts-enabled" className="cursor-pointer">
-                      Enable low filament alerts
+                      {t('settings.enableAlerts')}
                     </Label>
                   </div>
 
@@ -1538,7 +1532,7 @@ function SettingsContent() {
                     <div className="space-y-4 pl-6">
                       {/* Threshold type */}
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">Threshold type</Label>
+                        <Label className="text-sm font-medium">{t('settings.thresholdType')}</Label>
                         <div className="space-y-2">
                           <div className="flex items-center space-x-2">
                             <input
@@ -1551,7 +1545,7 @@ function SettingsContent() {
                               className="h-4 w-4"
                             />
                             <Label htmlFor="threshold-percentage" className="cursor-pointer text-sm">
-                              Percentage remaining
+                              {t('settings.percentageRemaining')}
                             </Label>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -1565,7 +1559,7 @@ function SettingsContent() {
                               className="h-4 w-4"
                             />
                             <Label htmlFor="threshold-grams" className="cursor-pointer text-sm">
-                              Absolute weight (grams)
+                              {t('settings.absoluteWeight')}
                             </Label>
                           </div>
                         </div>
@@ -1574,7 +1568,7 @@ function SettingsContent() {
                       {/* Threshold value */}
                       <div className="space-y-2">
                         <Label htmlFor="threshold-value" className="text-sm font-medium">
-                          Alert when below {alertConfig.thresholdType === 'percentage' ? '(%)' : '(grams)'}
+                          {t('settings.alertBelow')} {alertConfig.thresholdType === 'percentage' ? '(%)' : '(grams)'}
                         </Label>
                         <Input
                           id="threshold-value"
@@ -1591,7 +1585,7 @@ function SettingsContent() {
 
                       {/* Grouping strategy */}
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">Group spools by</Label>
+                        <Label className="text-sm font-medium">{t('settings.groupBy')}</Label>
                         <div className="space-y-2">
                           <div className="flex items-start space-x-2">
                             <input
@@ -1608,10 +1602,10 @@ function SettingsContent() {
                             />
                             <div>
                               <Label htmlFor="group-material" className="cursor-pointer text-sm">
-                                Material
+                                {t('settings.material')}
                               </Label>
                               <p className="text-xs text-muted-foreground">
-                                Alert when all PLA spools are low, all PETG spools are low, etc.
+                                {t('settings.materialDesc')}
                               </p>
                             </div>
                           </div>
@@ -1630,10 +1624,10 @@ function SettingsContent() {
                             />
                             <div>
                               <Label htmlFor="group-material-color" className="cursor-pointer text-sm">
-                                Material + Name
+                                {t('settings.materialName')}
                               </Label>
                               <p className="text-xs text-muted-foreground">
-                                Alert per filament product (e.g. all HF Black PETG spools, all Matte White PLA spools).
+                                {t('settings.materialNameDesc')}
                               </p>
                             </div>
                           </div>
@@ -1652,10 +1646,10 @@ function SettingsContent() {
                             />
                             <div>
                               <Label htmlFor="group-material-vendor-name" className="cursor-pointer text-sm">
-                                Material + Name + Vendor
+                                {t('settings.materialNameVendor')}
                               </Label>
                               <p className="text-xs text-muted-foreground">
-                                Like Material + Name, but distinguishes between vendors (e.g. Bambu Lab HF Black PETG vs Polymaker PolyLite Black PETG).
+                                {t('settings.materialNameVendorDesc')}
                               </p>
                             </div>
                           </div>
@@ -1664,7 +1658,7 @@ function SettingsContent() {
 
                       {/* Monitored groups */}
                       <div className="space-y-2">
-                        <Label className="text-sm font-medium">Monitor</Label>
+                        <Label className="text-sm font-medium">{t('settings.monitor')}</Label>
                         <div className="space-y-2">
                           <div className="flex items-center space-x-2">
                             <input
@@ -1676,7 +1670,7 @@ function SettingsContent() {
                               className="h-4 w-4"
                             />
                             <Label htmlFor="monitor-all" className="cursor-pointer text-sm">
-                              All groups
+                              {t('settings.allGroups')}
                             </Label>
                           </div>
                           <div className="flex items-center space-x-2">
@@ -1689,7 +1683,7 @@ function SettingsContent() {
                               className="h-4 w-4"
                             />
                             <Label htmlFor="monitor-selected" className="cursor-pointer text-sm">
-                              Selected groups only
+                              {t('settings.selectedGroups')}
                             </Label>
                           </div>
                         </div>
@@ -1697,7 +1691,7 @@ function SettingsContent() {
                         {alertConfig.monitoredGroups !== undefined && (
                           <div className="ml-6 space-y-2 pt-1">
                             {availableGroups.length === 0 ? (
-                              <p className="text-xs text-muted-foreground italic">No spool groups found.</p>
+                              <p className="text-xs text-muted-foreground italic">{t('settings.noGroups')}</p>
                             ) : (
                               availableGroups.map((group) => (
                                 <div key={group.groupKey} className="flex items-center space-x-2">
@@ -1728,7 +1722,7 @@ function SettingsContent() {
                                       {group.groupLabel}
                                     </Label>
                                     <span className="text-xs text-muted-foreground">
-                                      ({group.spoolCount} spool{group.spoolCount !== 1 ? 's' : ''})
+                                      ({group.spoolCount} {t('spools.title').toLowerCase()})
                                     </span>
                                   </div>
                                 </div>
@@ -1742,7 +1736,7 @@ function SettingsContent() {
                         onClick={saveAlertSettings}
                         disabled={savingAlerts}
                       >
-                        {savingAlerts ? 'Saving...' : 'Save Alert Settings'}
+                        {savingAlerts ? t('settings.saving') : t('settings.alertSave')}
                       </Button>
                     </div>
                   )}
@@ -1754,7 +1748,7 @@ function SettingsContent() {
                       variant="outline"
                       size="sm"
                     >
-                      {savingAlerts ? 'Saving...' : 'Save'}
+                      {savingAlerts ? t('settings.saving') : t('settings.save')}
                     </Button>
                   )}
                 </CardContent>
@@ -1765,15 +1759,14 @@ function SettingsContent() {
           {/* QR Code Base URL */}
           <Card>
             <CardHeader>
-              <CardTitle>QR Code / NFC URL</CardTitle>
+              <CardTitle>{t('settings.qrCodeUrl')}</CardTitle>
               <CardDescription>
-                Override the base URL used in generated QR code labels and NFC tags.
-                Leave empty to use the current browser URL automatically.
+                {t('settings.qrDesc')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-2">
-                <Label htmlFor="qrBaseUrl">Base URL</Label>
+                <Label htmlFor="qrBaseUrl">{t('settings.baseUrl')}</Label>
                 <div className="flex gap-2">
                   <Input
                     id="qrBaseUrl"
@@ -1791,21 +1784,20 @@ function SettingsContent() {
                           body: JSON.stringify({ type: 'qr_base_url', url: qrBaseUrl }),
                         });
                         if (!res.ok) throw new Error();
-                        toast.success(qrBaseUrl.trim() ? 'QR base URL saved' : 'QR base URL cleared');
+                        toast.success(qrBaseUrl.trim() ? t('settings.qrSaved') : t('settings.qrCleared'));
                       } catch {
-                        toast.error('Failed to save QR base URL');
+                        toast.error(t('settings.qrSaveFailed'));
                       } finally {
                         setSavingQrUrl(false);
                       }
                     }}
                     disabled={savingQrUrl}
                   >
-                    {savingQrUrl ? 'Saving...' : 'Save'}
+                    {savingQrUrl ? t('settings.saving') : t('settings.save')}
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Useful when accessing SpoolmanSync through a reverse proxy or custom domain.
-                  QR codes will link to this URL instead of the browser address bar URL.
+                  {t('settings.qrProxyDesc')}
                 </p>
               </div>
             </CardContent>

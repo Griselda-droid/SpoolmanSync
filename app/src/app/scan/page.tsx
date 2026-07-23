@@ -87,15 +87,15 @@ function ScanPageContent() {
         router.push(`/scan/spool/${matchedSpool.id}`);
       } else {
         setError(`No spool found for: ${scannedData}`);
-        toast.error('No matching spool found');
+        toast.error(t('scan.noMatchingSpool'));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to look up spool');
-      toast.error('Failed to look up spool');
+      toast.error(t('scan.lookupFailed'));
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, t]);
 
   // Check for barcode in URL params
   useEffect(() => {
@@ -166,20 +166,20 @@ function ScanPageContent() {
       {/* Manual Entry */}
       <Card>
         <CardHeader>
-          <CardTitle>Manual Entry</CardTitle>
+          <CardTitle>{t('scan.manualEntry')}</CardTitle>
           <CardDescription>
-            Enter a Spoolman barcode or spool ID manually
+            {t('scan.manualDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleManualSubmit} className="flex gap-2">
             <Input
-              placeholder="Enter spool ID, Spoolman barcode, or web+spoolman:s-123"
+              placeholder={t('scan.manualPlaceholder')}
               value={manualBarcode}
               onChange={(e) => setManualBarcode(e.target.value)}
             />
             <Button type="submit" disabled={loading || !manualBarcode.trim()}>
-              {loading ? 'Looking up...' : 'Look up'}
+              {loading ? t('scan.lookingUp') : t('scan.lookup')}
             </Button>
           </form>
         </CardContent>
@@ -188,9 +188,9 @@ function ScanPageContent() {
       {/* QR Code Generator */}
       <Card>
         <CardHeader>
-          <CardTitle>Print QR Labels</CardTitle>
+          <CardTitle>{t('scan.printQr')}</CardTitle>
           <CardDescription>
-            Print QR code labels for any paper or label size. Select multiple spools and customize the layout.
+            {t('scan.printQrDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -202,7 +202,7 @@ function ScanPageContent() {
             <QRCodeGenerator spools={allSpools} directAccessPort={directAccessPort} qrBaseUrl={qrBaseUrl} />
           ) : (
             <p className="text-sm text-muted-foreground text-center py-4">
-              No spools found. Add spools to Spoolman to generate QR labels.
+              {t('scan.noSpoolsQr')}
             </p>
           )}
         </CardContent>
@@ -211,9 +211,9 @@ function ScanPageContent() {
       {/* NFC Tag Writer */}
       <Card>
         <CardHeader>
-          <CardTitle>Write NFC Tag</CardTitle>
+          <CardTitle>{t('scan.writeNfcTitle')}</CardTitle>
           <CardDescription>
-            Write a spool link to an NFC sticker tag. Tap the tag with your phone to quickly assign to an AMS tray.
+            {t('scan.writeNfcDesc')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -225,7 +225,7 @@ function ScanPageContent() {
             <NFCWriter spools={allSpools} directAccessPort={directAccessPort} qrBaseUrl={qrBaseUrl} />
           ) : (
             <p className="text-sm text-muted-foreground text-center py-4">
-              No spools found. Add spools to Spoolman to write NFC tags.
+              {t('scan.noSpoolsNfc')}
             </p>
           )}
         </CardContent>
@@ -244,11 +244,13 @@ function ScanPageContent() {
 }
 
 export default function ScanPage() {
+  const { t } = useI18n();
+
   return (
     <div className="min-h-screen bg-background">
       <Nav />
       <main className="w-full max-w-2xl mx-auto py-6 px-3 sm:px-4 md:px-6">
-        <h1 className="text-xl sm:text-2xl font-bold mb-6">Scan Spool</h1>
+        <h1 className="text-xl sm:text-2xl font-bold mb-6">{t('scan.pageTitle')}</h1>
         <Suspense fallback={
           <div className="flex items-center justify-center h-64">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />

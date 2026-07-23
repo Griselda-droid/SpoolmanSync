@@ -23,9 +23,10 @@ export function LabelCell({ spool, url, widthMm, heightMm, content, layout }: La
   const innerHeight = heightMm - layout.safeZoneTopMm - layout.safeZoneBottomMm;
   const innerWidth = widthMm - layout.safeZoneLeftMm - layout.safeZoneRightMm;
 
-  // QR sizing: fit cell height, cap at 40% of width
+  // Base size follows the calculated label cell; the user scale adjusts it without overflow.
+  const autoQrSize = Math.min(innerHeight, innerWidth * 0.4);
   const qrSize = content.qrMode !== 'none'
-    ? Math.min(innerHeight, innerWidth * 0.4)
+    ? Math.min(autoQrSize * (content.qrScalePercent / 100), innerHeight, innerWidth)
     : 0;
 
   const textWidth = content.qrMode !== 'none'
@@ -90,6 +91,8 @@ export function LabelCell({ spool, url, widthMm, heightMm, content, layout }: La
             justifyContent: 'center',
             gap: `${sz * 0.15}mm`,
             maxWidth: `${textWidth}mm`,
+            overflowWrap: 'anywhere',
+            wordBreak: 'break-word',
           }}
         >
           {content.showVendor && spool.filament.vendor?.name && (
@@ -97,9 +100,8 @@ export function LabelCell({ spool, url, widthMm, heightMm, content, layout }: La
               fontSize: `${sz}mm`,
               fontWeight: 600,
               lineHeight: 1.2,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
+              overflowWrap: 'anywhere',
+              wordBreak: 'break-word',
               color: '#000',
             }}>
               {spool.filament.vendor.name}
@@ -109,15 +111,14 @@ export function LabelCell({ spool, url, widthMm, heightMm, content, layout }: La
             <div style={{
               fontSize: `${sz * 0.85}mm`,
               lineHeight: 1.2,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
+              overflowWrap: 'anywhere',
+              wordBreak: 'break-word',
               color: '#000',
             }}>
               {spool.filament.name}
             </div>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5mm' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5mm', minWidth: 0 }}>
             {content.showColor && (() => {
               const colors = spool.filament.multi_color_hexes
                 ? spool.filament.multi_color_hexes.split(',')
@@ -156,9 +157,9 @@ export function LabelCell({ spool, url, widthMm, heightMm, content, layout }: La
               <div style={{
                 fontSize: `${sz * 0.85}mm`,
                 lineHeight: 1.2,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
+                minWidth: 0,
+                overflowWrap: 'anywhere',
+                wordBreak: 'break-word',
                 color: '#000',
               }}>
                 {spool.filament.material}

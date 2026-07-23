@@ -25,6 +25,7 @@ export interface SheetSettings {
 
 export interface ContentSettings {
   qrMode: QRMode;
+  qrScalePercent: number;
   showLabel: boolean;
   labelTextSizeMm: number;
   showVendor: boolean;
@@ -83,6 +84,7 @@ export const DEFAULT_CONFIG: LabelSheetConfig = {
   },
   content: {
     qrMode: 'icon',
+    qrScalePercent: 100,
     showLabel: true,
     labelTextSizeMm: 3,
     showVendor: true,

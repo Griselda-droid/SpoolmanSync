@@ -15,6 +15,7 @@ import {
 import { ChevronDown } from 'lucide-react';
 import type { SheetSettings, ContentSettings, LayoutSettings } from '@/lib/label-sheet-config';
 import { PAPER_SIZES } from '@/lib/label-sheet-config';
+import { useI18n } from '@/lib/i18n';
 
 interface LabelSheetSettingsProps {
   sheet: SheetSettings;
@@ -174,14 +175,16 @@ export function LabelSheetSettings({
   updateContent,
   updateLayout,
 }: LabelSheetSettingsProps) {
+  const { t } = useI18n();
+
   return (
     <div className="space-y-2">
       {/* Print Settings */}
-      <CollapsibleSection title="Print Settings" defaultOpen>
+      <CollapsibleSection title={t('labelSettings.print')} defaultOpen>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Paper Size */}
           <div className="space-y-1">
-            <Label className="text-xs">Paper Size</Label>
+            <Label className="text-xs">{t('labelSettings.paperSize')}</Label>
             <Select
               value={sheet.paperSize}
               onValueChange={(v) => updateSheet({ paperSize: v })}
@@ -190,8 +193,8 @@ export function LabelSheetSettings({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(PAPER_SIZES).map(([key, ps]) => (
-                  <SelectItem key={key} value={key}>{ps.name}</SelectItem>
+                {Object.keys(PAPER_SIZES).map((key) => (
+                  <SelectItem key={key} value={key}>{t(`labelSettings.paper.${key}`)}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -199,14 +202,14 @@ export function LabelSheetSettings({
 
           {/* Border */}
           <div className="space-y-1">
-            <Label className="text-xs">Borders</Label>
+            <Label className="text-xs">{t('labelSettings.borders')}</Label>
             <ResponsiveTabSelect
               value={sheet.borderMode}
               onValueChange={(v) => updateSheet({ borderMode: v as SheetSettings['borderMode'] })}
               options={[
-                { value: 'none', label: 'None' },
-                { value: 'border', label: 'Border' },
-                { value: 'grid', label: 'Grid' },
+                { value: 'none', label: t('labelSettings.none') },
+                { value: 'border', label: t('labelSettings.border') },
+                { value: 'grid', label: t('labelSettings.grid') },
               ]}
             />
           </div>
@@ -215,42 +218,51 @@ export function LabelSheetSettings({
         {/* Custom size inputs */}
         {sheet.paperSize === 'custom' && (
           <div className="grid grid-cols-2 gap-3">
-            <NumberInput label="Width" value={sheet.customWidthMm} onChange={(v) => updateSheet({ customWidthMm: v })} min={10} max={500} step={0.1} suffix="mm" />
-            <NumberInput label="Height" value={sheet.customHeightMm} onChange={(v) => updateSheet({ customHeightMm: v })} min={10} max={500} step={0.1} suffix="mm" />
+            <NumberInput label={t('labelSettings.width')} value={sheet.customWidthMm} onChange={(v) => updateSheet({ customWidthMm: v })} min={10} max={500} step={0.1} suffix="mm" />
+            <NumberInput label={t('labelSettings.height')} value={sheet.customHeightMm} onChange={(v) => updateSheet({ customHeightMm: v })} min={10} max={500} step={0.1} suffix="mm" />
           </div>
         )}
 
         <div className="grid grid-cols-4 gap-3">
-          <NumberInput label="Columns" value={sheet.columns} onChange={(v) => updateSheet({ columns: v })} min={1} max={10} />
-          <NumberInput label="Rows" value={sheet.rows} onChange={(v) => updateSheet({ rows: v })} min={1} max={15} />
-          <NumberInput label="Skip" value={sheet.skipItems} onChange={(v) => updateSheet({ skipItems: v })} min={0} max={99} />
-          <NumberInput label="Copies" value={sheet.itemCopies} onChange={(v) => updateSheet({ itemCopies: v })} min={1} max={10} />
+          <NumberInput label={t('labelSettings.columns')} value={sheet.columns} onChange={(v) => updateSheet({ columns: v })} min={1} max={10} />
+          <NumberInput label={t('labelSettings.rows')} value={sheet.rows} onChange={(v) => updateSheet({ rows: v })} min={1} max={15} />
+          <NumberInput label={t('labelSettings.skip')} value={sheet.skipItems} onChange={(v) => updateSheet({ skipItems: v })} min={0} max={99} />
+          <NumberInput label={t('labelSettings.copies')} value={sheet.itemCopies} onChange={(v) => updateSheet({ itemCopies: v })} min={1} max={10} />
         </div>
       </CollapsibleSection>
 
       {/* Content Settings */}
-      <CollapsibleSection title="Content Settings">
+      <CollapsibleSection title={t('labelSettings.content')}>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="space-y-1">
-            <Label className="text-xs">QR Code</Label>
+            <Label className="text-xs">{t('labelSettings.qrCode')}</Label>
             <ResponsiveTabSelect
               value={content.qrMode}
               onValueChange={(v) => updateContent({ qrMode: v as ContentSettings['qrMode'] })}
               options={[
-                { value: 'none', label: 'No QR' },
-                { value: 'simple', label: 'Simple' },
-                { value: 'icon', label: 'Icon' },
+                { value: 'none', label: t('labelSettings.noQr') },
+                { value: 'simple', label: t('labelSettings.simple') },
+                { value: 'icon', label: t('labelSettings.icon') },
               ]}
             />
           </div>
           <NumberInput
-            label="Text Size"
+            label={t('labelSettings.textSize')}
             value={content.labelTextSizeMm}
             onChange={(v) => updateContent({ labelTextSizeMm: v })}
             min={1}
             max={10}
             step={0.5}
             suffix="mm"
+          />
+          <NumberInput
+            label={t('labelSettings.qrScale')}
+            value={content.qrScalePercent}
+            onChange={(v) => updateContent({ qrScalePercent: v })}
+            min={25}
+            max={150}
+            step={5}
+            suffix="%"
           />
         </div>
 
@@ -261,30 +273,30 @@ export function LabelSheetSettings({
               checked={content.showLabel}
               onCheckedChange={(c) => updateContent({ showLabel: !!c })}
             />
-            <label htmlFor="showLabel" className="text-xs">Print Label Text</label>
+            <label htmlFor="showLabel" className="text-xs">{t('labelSettings.printText')}</label>
           </div>
 
           {content.showLabel && (
             <div className="grid grid-cols-3 gap-2 ml-6">
               <div className="flex items-center space-x-2">
                 <Checkbox id="lsVendor" checked={content.showVendor} onCheckedChange={(c) => updateContent({ showVendor: !!c })} />
-                <label htmlFor="lsVendor" className="text-xs">Vendor</label>
+                <label htmlFor="lsVendor" className="text-xs">{t('labelSettings.vendor')}</label>
               </div>
               <div className="flex items-center space-x-2">
                 <Checkbox id="lsName" checked={content.showName} onCheckedChange={(c) => updateContent({ showName: !!c })} />
-                <label htmlFor="lsName" className="text-xs">Name</label>
+                <label htmlFor="lsName" className="text-xs">{t('labelSettings.name')}</label>
               </div>
               <div className="flex items-center space-x-2">
                 <Checkbox id="lsMaterial" checked={content.showMaterial} onCheckedChange={(c) => updateContent({ showMaterial: !!c })} />
-                <label htmlFor="lsMaterial" className="text-xs">Material</label>
+                <label htmlFor="lsMaterial" className="text-xs">{t('labelSettings.material')}</label>
               </div>
               <div className="flex items-center space-x-2">
                 <Checkbox id="lsColor" checked={content.showColor} onCheckedChange={(c) => updateContent({ showColor: !!c })} />
-                <label htmlFor="lsColor" className="text-xs">Color Dot</label>
+                <label htmlFor="lsColor" className="text-xs">{t('labelSettings.colorDot')}</label>
               </div>
               <div className="flex items-center space-x-2">
                 <Checkbox id="lsId" checked={content.showSpoolId} onCheckedChange={(c) => updateContent({ showSpoolId: !!c })} />
-                <label htmlFor="lsId" className="text-xs">Spool ID</label>
+                <label htmlFor="lsId" className="text-xs">{t('labelSettings.spoolId')}</label>
               </div>
             </div>
           )}
@@ -292,32 +304,32 @@ export function LabelSheetSettings({
       </CollapsibleSection>
 
       {/* Layout Settings */}
-      <CollapsibleSection title="Layout Settings">
+      <CollapsibleSection title={t('labelSettings.layout')}>
         <div className="space-y-2">
-          <Label className="text-xs font-medium">Margins (mm)</Label>
+          <Label className="text-xs font-medium">{t('labelSettings.margins')}</Label>
           <div className="grid grid-cols-4 gap-2">
-            <NumberInput label="Left" value={layout.marginLeftMm} onChange={(v) => updateLayout({ marginLeftMm: v })} min={0} max={50} step={0.5} />
-            <NumberInput label="Top" value={layout.marginTopMm} onChange={(v) => updateLayout({ marginTopMm: v })} min={0} max={50} step={0.5} />
-            <NumberInput label="Right" value={layout.marginRightMm} onChange={(v) => updateLayout({ marginRightMm: v })} min={0} max={50} step={0.5} />
-            <NumberInput label="Bottom" value={layout.marginBottomMm} onChange={(v) => updateLayout({ marginBottomMm: v })} min={0} max={50} step={0.5} />
+            <NumberInput label={t('labelSettings.left')} value={layout.marginLeftMm} onChange={(v) => updateLayout({ marginLeftMm: v })} min={0} max={50} step={0.5} />
+            <NumberInput label={t('labelSettings.top')} value={layout.marginTopMm} onChange={(v) => updateLayout({ marginTopMm: v })} min={0} max={50} step={0.5} />
+            <NumberInput label={t('labelSettings.right')} value={layout.marginRightMm} onChange={(v) => updateLayout({ marginRightMm: v })} min={0} max={50} step={0.5} />
+            <NumberInput label={t('labelSettings.bottom')} value={layout.marginBottomMm} onChange={(v) => updateLayout({ marginBottomMm: v })} min={0} max={50} step={0.5} />
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label className="text-xs font-medium">Safe Zones (mm)</Label>
+          <Label className="text-xs font-medium">{t('labelSettings.safeZones')}</Label>
           <div className="grid grid-cols-4 gap-2">
-            <NumberInput label="Left" value={layout.safeZoneLeftMm} onChange={(v) => updateLayout({ safeZoneLeftMm: v })} min={0} max={20} step={0.5} />
-            <NumberInput label="Top" value={layout.safeZoneTopMm} onChange={(v) => updateLayout({ safeZoneTopMm: v })} min={0} max={20} step={0.5} />
-            <NumberInput label="Right" value={layout.safeZoneRightMm} onChange={(v) => updateLayout({ safeZoneRightMm: v })} min={0} max={20} step={0.5} />
-            <NumberInput label="Bottom" value={layout.safeZoneBottomMm} onChange={(v) => updateLayout({ safeZoneBottomMm: v })} min={0} max={20} step={0.5} />
+            <NumberInput label={t('labelSettings.left')} value={layout.safeZoneLeftMm} onChange={(v) => updateLayout({ safeZoneLeftMm: v })} min={0} max={20} step={0.5} />
+            <NumberInput label={t('labelSettings.top')} value={layout.safeZoneTopMm} onChange={(v) => updateLayout({ safeZoneTopMm: v })} min={0} max={20} step={0.5} />
+            <NumberInput label={t('labelSettings.right')} value={layout.safeZoneRightMm} onChange={(v) => updateLayout({ safeZoneRightMm: v })} min={0} max={20} step={0.5} />
+            <NumberInput label={t('labelSettings.bottom')} value={layout.safeZoneBottomMm} onChange={(v) => updateLayout({ safeZoneBottomMm: v })} min={0} max={20} step={0.5} />
           </div>
         </div>
 
         <div className="space-y-2">
-          <Label className="text-xs font-medium">Spacing (mm)</Label>
+          <Label className="text-xs font-medium">{t('labelSettings.spacing')}</Label>
           <div className="grid grid-cols-2 gap-2">
-            <NumberInput label="Horizontal" value={layout.spacingHorizontalMm} onChange={(v) => updateLayout({ spacingHorizontalMm: v })} min={0} max={20} step={0.5} />
-            <NumberInput label="Vertical" value={layout.spacingVerticalMm} onChange={(v) => updateLayout({ spacingVerticalMm: v })} min={0} max={20} step={0.5} />
+            <NumberInput label={t('labelSettings.horizontal')} value={layout.spacingHorizontalMm} onChange={(v) => updateLayout({ spacingHorizontalMm: v })} min={0} max={20} step={0.5} />
+            <NumberInput label={t('labelSettings.vertical')} value={layout.spacingVerticalMm} onChange={(v) => updateLayout({ spacingVerticalMm: v })} min={0} max={20} step={0.5} />
           </div>
         </div>
       </CollapsibleSection>

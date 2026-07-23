@@ -19,6 +19,7 @@ import { ArrowLeft, Loader2, CheckCircle2 } from 'lucide-react';
 import { SpoolColorSwatch } from '@/components/spool-color-swatch';
 import type { Spool } from '@/lib/api/spoolman';
 import { isKioskMode, disableKioskMode } from '@/lib/kiosk';
+import { useI18n } from '@/lib/i18n';
 import Link from 'next/link';
 
 interface TrayOption {
@@ -34,6 +35,7 @@ export default function SpoolAssignPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { t } = useI18n();
   const router = useRouter();
   const [spool, setSpool] = useState<Spool | null>(null);
   const [trays, setTrays] = useState<TrayOption[]>([]);
@@ -80,9 +82,9 @@ export default function SpoolAssignPage({
 
       if (!spoolsRes.ok) {
         if (spoolsRes.status === 400) {
-          setError('Spoolman is not configured. Please set up Spoolman in Settings first.');
+          setError(t('scan.spoolmanNotConfigured'));
         } else {
-          setError('Failed to fetch spool data');
+          setError(t('scan.fetchFailed'));
         }
         setLoading(false);
         return;
@@ -96,7 +98,7 @@ export default function SpoolAssignPage({
       );
 
       if (!foundSpool) {
-        setError(`Spool #${id} not found in Spoolman`);
+        setError(`${t('scan.notFound')} #${id}`);
         setLoading(false);
         return;
       }
@@ -115,7 +117,7 @@ export default function SpoolAssignPage({
             for (const tray of ams.trays || []) {
               trayOptions.push({
                 id: tray.unique_id || tray.entity_id,
-                label: `Tray ${tray.tray_number}`,
+                label: `${t('settings.tray')} ${tray.tray_number}`,
                 printer: printer.name,
                 amsName: ams.name,
               });
@@ -125,7 +127,7 @@ export default function SpoolAssignPage({
           for (let i = 0; i < extSpools.length; i++) {
             trayOptions.push({
               id: extSpools[i].unique_id || extSpools[i].entity_id,
-              label: extSpools.length > 1 ? `External Spool ${i + 1}` : 'External Spool',
+              label: extSpools.length > 1 ? `${t('scan.externalSpool')} ${i + 1}` : t('scan.externalSpool'),
               printer: printer.name,
             });
           }
@@ -140,7 +142,7 @@ export default function SpoolAssignPage({
         return;
       }
       if (!isActive()) return;
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : t('scan.unknownError'));
     } finally {
       if (isActive()) setLoading(false);
     }
@@ -160,7 +162,7 @@ export default function SpoolAssignPage({
 
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.error || 'Failed to assign spool');
+        throw new Error(data?.error || t('scan.assignFailed'));
       }
 
       if (kioskMode) {
@@ -168,11 +170,11 @@ export default function SpoolAssignPage({
         setKioskSuccess(trayLabel);
         setTimeout(() => router.push('/kiosk'), 1500);
       } else {
-        toast.success('Spool assigned successfully!');
+        toast.success(t('scan.assignSuccess'));
         router.push('/');
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to assign');
+      toast.error(err instanceof Error ? err.message : t('scan.assignFailed'));
       setAssigning(false);
       setPendingTrayId(null);
     }
@@ -184,7 +186,7 @@ export default function SpoolAssignPage({
       <div className="min-h-screen bg-background flex flex-col items-center justify-center p-[clamp(1rem,4vw,2rem)]">
         <CheckCircle2 className="h-[clamp(3rem,15vw,5rem)] w-[clamp(3rem,15vw,5rem)] text-green-500 mb-[clamp(0.5rem,2vw,1rem)]" />
         <h1 className="text-[clamp(1.25rem,5vw,2rem)] font-bold text-center text-green-500">
-          Assigned!
+          {t('scan.assigned')}
         </h1>
         <p className="text-[clamp(0.75rem,3vw,1rem)] text-muted-foreground text-center mt-[clamp(0.25rem,1vw,0.5rem)]">
           {spool?.filament.name || spool?.filament.material} &rarr; {kioskSuccess}
@@ -239,7 +241,7 @@ export default function SpoolAssignPage({
             {trays.length > 0 ? (
               <>
                 <h2 className="text-[clamp(0.75rem,3vw,1rem)] font-medium text-muted-foreground mb-[clamp(0.5rem,2vw,0.75rem)]">
-                  Assign to tray:
+                  {t('scan.assignToTray')}
                 </h2>
                 <div className="grid grid-cols-2 gap-[clamp(0.5rem,2vw,0.75rem)] flex-1 auto-rows-fr">
                   {trays.map((tray) => (
@@ -273,13 +275,13 @@ export default function SpoolAssignPage({
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center">
                 <p className="text-[clamp(0.75rem,3vw,0.875rem)] text-muted-foreground">
-                  No printers or trays found.
+                  {t('scan.noPrinters')}
                 </p>
                 <a
                   href="/kiosk"
                   className="text-[clamp(0.75rem,3vw,0.875rem)] text-primary hover:underline"
                 >
-                  Back to scanner
+                  {t('scan.backToScanner')}
                 </a>
               </div>
             )}
@@ -292,7 +294,7 @@ export default function SpoolAssignPage({
             href="/kiosk"
             className="text-[clamp(0.625rem,2.5vw,0.75rem)] text-muted-foreground/60 hover:text-muted-foreground"
           >
-            &larr; Back
+            &larr; {t('scan.back')}
           </a>
           <button
             onClick={() => {
@@ -301,7 +303,7 @@ export default function SpoolAssignPage({
             }}
             className="text-[clamp(0.625rem,2.5vw,0.75rem)] text-muted-foreground/40 hover:text-muted-foreground"
           >
-            Exit Kiosk Mode
+            {t('scan.exitKiosk')}
           </button>
         </div>
       </div>
@@ -317,10 +319,10 @@ export default function SpoolAssignPage({
           <Link href="/scan">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-1" />
-              Back
+              {t('scan.back')}
             </Button>
           </Link>
-          <h1 className="text-xl sm:text-2xl font-bold">Assign Spool</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">{t('scan.assignTitle')}</h1>
         </div>
 
         {/* Loading State */}
@@ -336,7 +338,7 @@ export default function SpoolAssignPage({
             <CardContent className="pt-6">
               <p className="text-destructive mb-4">{error}</p>
               <Link href="/scan">
-                <Button variant="outline">Go to Scan Page</Button>
+                <Button variant="outline">{t('scan.goToScan')}</Button>
               </Link>
             </CardContent>
           </Card>
@@ -359,13 +361,13 @@ export default function SpoolAssignPage({
               <CardContent>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-muted-foreground">Material:</span>
+                    <span className="text-muted-foreground">{t('scan.material')}:</span>
                     <Badge variant="secondary" className="ml-2">
                       {spool.filament.material}
                     </Badge>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Remaining:</span>
+                    <span className="text-muted-foreground">{t('scan.remaining')}:</span>
                     <span className="ml-2 font-medium">{Math.round(spool.remaining_weight)}g</span>
                   </div>
                 </div>
@@ -376,16 +378,16 @@ export default function SpoolAssignPage({
             {trays.length > 0 ? (
               <Card>
                 <CardHeader>
-                  <CardTitle>Select Tray</CardTitle>
+                  <CardTitle>{t('scan.selectTray')}</CardTitle>
                   <CardDescription>
-                    Choose which AMS tray to assign this spool to
+                    {t('scan.selectTrayDesc')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Command className="rounded-lg border">
-                    <CommandInput placeholder="Search trays..." />
+                    <CommandInput placeholder={t('scan.searchTrays')} />
                     <CommandList className="max-h-[300px]">
-                      <CommandEmpty>No trays found.</CommandEmpty>
+                      <CommandEmpty>{t('scan.noTrays')}</CommandEmpty>
                       <CommandGroup>
                         {trays.map((tray) => (
                           <CommandItem
@@ -404,7 +406,7 @@ export default function SpoolAssignPage({
                             {assigning ? (
                               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
                             ) : (
-                              <Badge variant="outline">Select</Badge>
+                              <Badge variant="outline">{t('scan.select')}</Badge>
                             )}
                           </CommandItem>
                         ))}
@@ -417,11 +419,11 @@ export default function SpoolAssignPage({
               <Card>
                 <CardContent className="pt-6">
                   <p className="text-muted-foreground text-center">
-                    No printers or trays found. Please set up Home Assistant and discover printers first.
+                    {t('scan.noPrinters')}
                   </p>
                   <div className="flex justify-center mt-4">
                     <Link href="/settings">
-                      <Button variant="outline">Go to Settings</Button>
+                      <Button variant="outline">{t('nav.settings')}</Button>
                     </Link>
                   </div>
                 </CardContent>

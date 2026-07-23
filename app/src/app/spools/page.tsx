@@ -218,7 +218,7 @@ export default function SpoolsPage() {
                           {spool.filament?.name || spool.filament?.material || `#${spool.id}`}
                         </span>
                         {spool.archived && (
-                          <Badge variant="secondary" className="text-xs">Archived</Badge>
+                          <Badge variant="secondary" className="text-xs">{t('spools.filterArchived')}</Badge>
                         )}
                       </div>
                       <div className="text-xs text-muted-foreground">
