@@ -23,6 +23,7 @@ describe('bambu filament profiles', () => {
   it('uses the PLA Silk profile instead of the previous tray profile', () => {
     expect(bambuFilamentId('PLA SILK', 'Bambu', 'GFG00')).toBe('GFA05');
     expect(bambuFilamentId('PLA SILK', 'Generic', 'GFG00')).toBe('GFL96');
+    expect(bambuFilamentId('PLA', 'Generic', 'GFA00', '123 123 123 蓝色', '123')).toBe('GFL99');
     expect(bambuFilamentId('PLA SILK', 'Bambu', 'GFA00', 'Bambu PLA Silk', 'Bambu Lab')).toBe('GFA05');
     expect(bambuFilamentId('PLA SILK', 'Generic', 'GFA00', 'Generic PLA Silk', 'Generic')).toBe('GFL96');
     expect(bambuFilamentId('TPU 95A HF', 'Bambu', 'GFA00', 'Bambu TPU 95A HF', 'Bambu Lab')).toBe('GFU00');

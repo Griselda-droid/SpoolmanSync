@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
+import { useI18n } from '@/lib/i18n';
 
 interface QRScannerProps {
   onScan: (result: string) => void;
@@ -10,6 +11,7 @@ interface QRScannerProps {
 }
 
 export function QRScanner({ onScan, onError }: QRScannerProps) {
+  const { t } = useI18n();
   const [isScanning, setIsScanning] = useState(false);
   const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
   const [selectedCamera, setSelectedCamera] = useState<string>('');
@@ -17,6 +19,22 @@ export function QRScanner({ onScan, onError }: QRScannerProps) {
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const isMountedRef = useRef(true);
+
+  const stopScanning = async () => {
+    // Always attempt to stop the scanner regardless of the isScanning flag.
+    // Html5Qrcode.stop() throws harmlessly when not running, so guarding on
+    // isScanning could leak a stream that started after the flag was read.
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current.clear();
+      } catch (err) {
+        console.error('Error stopping scanner:', err);
+      }
+      scannerRef.current = null;
+    }
+    setIsScanning(false);
+  };
 
   // Track mounted state and clean up on unmount. A fast navigate-away during
   // async camera startup could otherwise leak the camera stream.
@@ -38,11 +56,7 @@ export function QRScanner({ onScan, onError }: QRScannerProps) {
       const devices = await Html5Qrcode.getCameras();
       if (devices && devices.length) {
         setCameras(devices);
-        // Prefer back camera on mobile
-        const backCamera = devices.find(
-          (d) => d.label.toLowerCase().includes('back') || d.label.toLowerCase().includes('rear')
-        );
-        const cameraId = backCamera?.id || devices[0].id;
+        const cameraId = devices[0].id;
         setSelectedCamera(cameraId);
         setCamerasLoaded(true);
         return cameraId;
@@ -50,18 +64,18 @@ export function QRScanner({ onScan, onError }: QRScannerProps) {
       return null;
     } catch (err) {
       console.error('Error getting cameras:', err);
-      onError?.('Unable to access camera. Please check permissions.');
+      onError?.(t('scan.cameraPermission'));
       return null;
     }
   };
 
-  const startScanning = async () => {
+  const startScanning = async (cameraIdOverride?: string) => {
     if (!containerRef.current) return;
 
     // Load cameras on first scan attempt (this is when camera permission is requested)
-    const cameraId = await loadCameras();
+    const cameraId = cameraIdOverride || await loadCameras();
     if (!cameraId) {
-      onError?.('No cameras found. Please ensure camera permissions are granted.');
+      onError?.(t('scan.cameraNotFound'));
       return;
     }
 
@@ -94,24 +108,16 @@ export function QRScanner({ onScan, onError }: QRScannerProps) {
       setIsScanning(true);
     } catch (err) {
       console.error('Error starting scanner:', err);
-      onError?.('Failed to start camera. Please check permissions.');
+      onError?.(t('scan.cameraStartFailed'));
     }
   };
 
-  const stopScanning = async () => {
-    // Always attempt to stop the scanner regardless of the isScanning flag.
-    // Html5Qrcode.stop() throws harmlessly when not running, so guarding on
-    // isScanning could leak a stream that started after the flag was read.
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.stop();
-        scannerRef.current.clear();
-      } catch (err) {
-        console.error('Error stopping scanner:', err);
-      }
-      scannerRef.current = null;
+  const handleCameraChange = async (cameraId: string) => {
+    setSelectedCamera(cameraId);
+    if (isScanning) {
+      await stopScanning();
+      await startScanning(cameraId);
     }
-    setIsScanning(false);
   };
 
   return (
@@ -119,18 +125,17 @@ export function QRScanner({ onScan, onError }: QRScannerProps) {
       {camerasLoaded && cameras.length > 1 && (
         <div className="flex items-center gap-2">
           <label htmlFor="camera-select" className="text-sm font-medium">
-            Camera:
+            {t('scan.cameraLabel')}
           </label>
           <select
             id="camera-select"
             value={selectedCamera}
-            onChange={(e) => setSelectedCamera(e.target.value)}
-            disabled={isScanning}
+            onChange={(e) => handleCameraChange(e.target.value)}
             className="flex h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
           >
             {cameras.map((camera) => (
               <option key={camera.id} value={camera.id}>
-                {camera.label || `Camera ${camera.id}`}
+                {camera.label || `${t('scan.cameraFallback')} ${camera.id}`}
               </option>
             ))}
           </select>
@@ -146,20 +151,18 @@ export function QRScanner({ onScan, onError }: QRScannerProps) {
 
       <div className="flex justify-center gap-2">
         {!isScanning ? (
-          <Button onClick={startScanning}>
-            Start Scanning
+          <Button onClick={() => startScanning()}>
+            {t('scan.startScanning')}
           </Button>
         ) : (
           <Button variant="destructive" onClick={stopScanning}>
-            Stop Scanning
+            {t('scan.stopScanning')}
           </Button>
         )}
       </div>
 
       {camerasLoaded && cameras.length === 0 && (
-        <p className="text-center text-muted-foreground">
-          No cameras found. Please ensure camera permissions are granted.
-        </p>
+        <p className="text-center text-muted-foreground">{t('scan.noCamera')}</p>
       )}
     </div>
   );

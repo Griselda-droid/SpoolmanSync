@@ -17,6 +17,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { useI18n } from '@/lib/i18n';
 
 interface ActivityLog {
   id: string;
@@ -35,16 +36,10 @@ interface Pagination {
 
 type FilterType = 'all' | 'actions' | 'tray_changes' | 'errors';
 
-const FILTER_OPTIONS: { value: FilterType; label: string; description: string }[] = [
-  { value: 'all', label: 'All Events', description: 'Show all activity' },
-  { value: 'actions', label: 'Actions', description: 'Spool assignments and usage' },
-  { value: 'tray_changes', label: 'Tray Changes', description: 'All detected tray changes' },
-  { value: 'errors', label: 'Errors', description: 'Errors only' },
-];
-
 const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 export default function LogsPage() {
+  const { t } = useI18n();
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [loading, setLoading] = useState(true);
@@ -62,6 +57,13 @@ export default function LogsPage() {
   const [deleteTarget, setDeleteTarget] = useState<ActivityLog | null>(null);
   const [deleteAdjustSpoolman, setDeleteAdjustSpoolman] = useState(false);
   const [mutating, setMutating] = useState(false);
+
+  const filterOptions: { value: FilterType; label: string; description: string }[] = [
+    { value: 'all', label: t('logs.allEvents'), description: t('logs.showAllActivity') },
+    { value: 'actions', label: t('logs.actions'), description: t('logs.actionsDesc') },
+    { value: 'tray_changes', label: t('logs.trayChanges'), description: t('logs.trayChangesDesc') },
+    { value: 'errors', label: t('logs.errors'), description: t('logs.errorsDesc') },
+  ];
 
   const fetchLogs = useCallback(async (pageNum: number = page, filterType: FilterType = filter, limit: number = pageSize) => {
     try {
@@ -322,7 +324,7 @@ export default function LogsPage() {
     if (!editTarget) return;
     const weight = Number(editWeight);
     if (!isFinite(weight) || weight < 0) {
-      toast.error('Enter a valid non-negative weight in grams');
+      toast.error(t('logs.validWeight'));
       return;
     }
     try {
@@ -334,16 +336,16 @@ export default function LogsPage() {
       });
       const data = await res.json();
       if (!res.ok || data.success === false) {
-        throw new Error(data.error || 'Failed to edit usage event');
+        throw new Error(data.error || t('logs.editUsage'));
       }
-      toast.success('Usage event updated');
+      toast.success(t('logs.updated'));
       if (data.warning) {
         toast.error(data.warning);
       }
       setEditTarget(null);
       await fetchLogs(page, filter, pageSize);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to edit usage event');
+      toast.error(err instanceof Error ? err.message : t('logs.editUsage'));
     } finally {
       setMutating(false);
     }
@@ -360,16 +362,16 @@ export default function LogsPage() {
       });
       const data = await res.json();
       if (!res.ok || data.success === false) {
-        throw new Error(data.error || 'Failed to delete usage event');
+        throw new Error(data.error || t('logs.deleteUsage'));
       }
-      toast.success('Usage event deleted');
+      toast.success(t('logs.deleted'));
       if (data.warning) {
         toast.error(data.warning);
       }
       setDeleteTarget(null);
       await fetchLogs(page, filter, pageSize);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to delete usage event');
+      toast.error(err instanceof Error ? err.message : t('logs.deleteUsage'));
     } finally {
       setMutating(false);
     }
@@ -394,16 +396,16 @@ export default function LogsPage() {
       <main className="w-full max-w-7xl mx-auto py-6 px-3 sm:px-4 md:px-6">
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl sm:text-2xl font-bold">Activity Logs</h1>
+            <h1 className="text-xl sm:text-2xl font-bold">{t('logs.title')}</h1>
             {connected && (
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                Live
+                {t('logs.live')}
               </span>
             )}
           </div>
           <Button variant="outline" onClick={() => fetchLogs(page, filter)} disabled={loading} className="w-auto self-start sm:self-auto">
-            {loading ? 'Loading...' : 'Refresh'}
+            {loading ? t('logs.loading') : t('logs.refresh')}
           </Button>
         </div>
 
@@ -414,7 +416,7 @@ export default function LogsPage() {
 
         {/* Filter tabs */}
         <div className="mb-4 grid grid-cols-4 sm:flex sm:flex-wrap gap-2">
-          {FILTER_OPTIONS.map((option) => (
+          {filterOptions.map((option) => (
             <Button
               key={option.value}
               variant={filter === option.value ? 'default' : 'outline'}
@@ -432,11 +434,11 @@ export default function LogsPage() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle>
-                {FILTER_OPTIONS.find(o => o.value === filter)?.label || 'Activity'}
+                {filterOptions.find(o => o.value === filter)?.label || t('logs.activity')}
               </CardTitle>
               {pagination && (
                 <span className="text-sm text-muted-foreground">
-                  {pagination.total} total events
+                  {pagination.total} {t('logs.totalEvents')}
                 </span>
               )}
             </div>
@@ -444,7 +446,7 @@ export default function LogsPage() {
           <CardContent>
             {logs.length === 0 ? (
               <p className="text-muted-foreground text-center py-8">
-                No activity logs yet
+                {t('logs.empty')}
               </p>
             ) : (
               <div className="space-y-3">
@@ -466,7 +468,7 @@ export default function LogsPage() {
                       {log.details && (
                         <details className="mt-1">
                           <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
-                            Details
+                            {t('logs.details')}
                           </summary>
                           <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto">
                             {formatDetails(log.details)}
@@ -480,14 +482,14 @@ export default function LogsPage() {
                             onClick={() => openEdit(log)}
                             className="text-xs text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
                           >
-                            Edit
+                            {t('logs.edit')}
                           </button>
                           <button
                             type="button"
                             onClick={() => openDelete(log)}
                             className="text-xs text-muted-foreground hover:text-destructive underline-offset-2 hover:underline"
                           >
-                            Delete
+                            {t('logs.delete')}
                           </button>
                         </div>
                       )}
@@ -508,19 +510,19 @@ export default function LogsPage() {
                       onClick={() => setPage(p => Math.max(1, p - 1))}
                       disabled={page <= 1 || loading}
                     >
-                      Previous
+                      {t('logs.previous')}
                     </Button>
                   )}
                 </div>
                 <div className="flex items-center gap-4">
                   {pagination.totalPages > 1 && (
                     <span className="text-sm text-muted-foreground">
-                      Page {pagination.page} of {pagination.totalPages}
+                      {t('logs.pageOf', { page: pagination.page, totalPages: pagination.totalPages })}
                     </span>
                   )}
                   <div className="flex items-center gap-2">
                     <label htmlFor="pageSize" className="text-sm text-muted-foreground">
-                      Show:
+                      {t('logs.show')}
                     </label>
                     <select
                       id="pageSize"
@@ -557,15 +559,14 @@ export default function LogsPage() {
         <Dialog open={editTarget !== null} onOpenChange={(open) => { if (!open) setEditTarget(null); }}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Edit usage event</DialogTitle>
+              <DialogTitle>{t('logs.editUsage')}</DialogTitle>
               <DialogDescription>
-                Correct the grams recorded for this usage event. This only updates SpoolmanSync statistics unless you
-                opt in to adjust Spoolman below.
+                {t('logs.editUsageDesc')}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-2">
               <div className="space-y-2">
-                <Label htmlFor="editWeight">Used weight (g)</Label>
+                <Label htmlFor="editWeight">{t('logs.usedWeight')}</Label>
                 <Input
                   id="editWeight"
                   type="number"
@@ -584,16 +585,16 @@ export default function LogsPage() {
                   disabled={mutating}
                 />
                 <Label htmlFor="editAdjustSpoolman" className="text-sm font-normal leading-snug">
-                  Also adjust Spoolman remaining weight
+                  {t('logs.adjustSpoolman')}
                 </Label>
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setEditTarget(null)} disabled={mutating}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button onClick={handleEditSave} disabled={mutating}>
-                {mutating ? 'Saving...' : 'Save'}
+                {mutating ? t('logs.saving') : t('logs.save')}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -603,10 +604,9 @@ export default function LogsPage() {
         <Dialog open={deleteTarget !== null} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Delete usage event</DialogTitle>
+              <DialogTitle>{t('logs.deleteUsage')}</DialogTitle>
               <DialogDescription>
-                This removes the usage event from SpoolmanSync statistics. It does not change the spool&apos;s remaining
-                weight in Spoolman unless you opt in below.
+                {t('logs.deleteUsageDesc')}
               </DialogDescription>
             </DialogHeader>
             <div className="py-2">
@@ -618,16 +618,16 @@ export default function LogsPage() {
                   disabled={mutating}
                 />
                 <Label htmlFor="deleteAdjustSpoolman" className="text-sm font-normal leading-snug">
-                  Also adjust Spoolman remaining weight (return the deducted grams to the spool)
+                  {t('logs.returnWeight')}
                 </Label>
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setDeleteTarget(null)} disabled={mutating}>
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button variant="destructive" onClick={handleDeleteConfirm} disabled={mutating}>
-                {mutating ? 'Deleting...' : 'Delete'}
+                {mutating ? t('logs.deleting') : t('logs.delete')}
               </Button>
             </DialogFooter>
           </DialogContent>

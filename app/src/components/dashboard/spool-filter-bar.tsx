@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { X } from 'lucide-react';
+import { useI18n } from '@/lib/i18n';
 
 const ALL_VALUE = '__all__';
 
@@ -35,6 +36,7 @@ export function SpoolFilterBar({
   fields,
   extra,
 }: SpoolFilterBarProps) {
+  const { t } = useI18n();
   // Check if any filters are active
   const hasActiveFilters = Object.values(filters).some((v) => v !== null);
 
@@ -69,7 +71,7 @@ export function SpoolFilterBar({
                 <SelectValue placeholder={field.name} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={ALL_VALUE}>All {field.name}</SelectItem>
+                <SelectItem value={ALL_VALUE}>{t('common.all', { name: field.name })}</SelectItem>
                 {field.values.map((v) => (
                   <SelectItem key={v} value={v}>
                     {v}
@@ -87,7 +89,7 @@ export function SpoolFilterBar({
               onClick={onClearAll}
               className="h-8 text-xs text-muted-foreground hover:text-foreground"
             >
-              Clear all
+              {t('common.clearHistory')}
             </Button>
           )}
         </div>
@@ -98,7 +100,7 @@ export function SpoolFilterBar({
       {/* Active filter badges */}
       {activeBadges.length > 0 && (
         <div className="flex flex-wrap items-center gap-1">
-          <span className="text-xs text-muted-foreground mr-1">Active:</span>
+          <span className="text-xs text-muted-foreground mr-1">{t('common.active')}</span>
           {activeBadges.map((badge) => (
             <Badge
               key={badge.key}

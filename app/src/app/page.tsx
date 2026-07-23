@@ -335,18 +335,18 @@ export default function Dashboard() {
       <Nav />
       <main className="w-full max-w-7xl mx-auto py-6 px-3 sm:px-4 md:px-6">
         <div className="mb-4 sm:mb-6 flex items-center justify-between gap-2">
-          <h1 className="text-xl sm:text-2xl font-bold">Dashboard</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">{t('dashboard.title')}</h1>
           <Button variant="outline" size="sm" onClick={fetchData}>
-            Refresh
+            {t('dashboard.refresh')}
           </Button>
         </div>
 
         {printers.length === 0 ? (
           <Card>
             <CardHeader>
-              <CardTitle>No Printers Found</CardTitle>
+              <CardTitle>{t('dashboard.noPrinters')}</CardTitle>
               <CardDescription>
-                Make sure your Bambu Lab printer is connected to Home Assistant via the ha-bambulab integration and added in SpoolmanSync Settings.
+                {t('dashboard.noPrintersDesc')}
               </CardDescription>
             </CardHeader>
           </Card>
@@ -368,12 +368,11 @@ export default function Dashboard() {
                     d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"
                   />
                 </svg>
-                <AlertTitle>Automations Out of Date</AlertTitle>
+                <AlertTitle>{t('dashboard.automationsOutOfDate')}</AlertTitle>
                 <AlertDescription>
-                  Entity IDs in Home Assistant have changed since automations were last configured.
-                  Tray change detection and filament usage tracking may not work until you reconfigure.{' '}
+                  {t('dashboard.automationsOutOfDateDesc')}{' '}
                   <Link href="/automations" className="underline hover:no-underline font-medium">
-                    Reconfigure Automations
+                    {t('dashboard.reconfigureAutomations')}
                   </Link>
                 </AlertDescription>
               </Alert>
@@ -395,17 +394,17 @@ export default function Dashboard() {
                     d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
-                <AlertTitle>Assign Spools to Trays</AlertTitle>
+                <AlertTitle>{t('dashboard.assignSpoolsToTrays')}</AlertTitle>
                 <AlertDescription>
                   <div className="space-y-1">
                     {unassignedTrays.map((tray) => {
                       const details = [tray.material, tray.name].filter(Boolean).join(' - ');
                       return (
                         <div key={tray.key}>
-                          <strong>{tray.label}</strong> has filament but no assigned spool.
+                          <strong>{tray.label}</strong> {t('dashboard.hasFilamentNoSpool')}
                           {details && (
                             <span>
-                              {' '}AMS reports: {details}
+                              {' '}{t('dashboard.amsReports')} {details}
                               {tray.color && (
                                 <span
                                   className="inline-block w-3 h-3 rounded-full ml-1 align-middle border border-border"
@@ -418,8 +417,7 @@ export default function Dashboard() {
                       );
                     })}
                     <div className="mt-1">
-                      Click on the tray card below to select which Spoolman spool is loaded.
-                      This ensures accurate filament tracking when prints complete.
+                      {t('dashboard.assignTrayHint')}
                     </div>
                   </div>
                 </AlertDescription>
@@ -442,7 +440,7 @@ export default function Dashboard() {
                     d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4.5c-.77-.833-2.694-.833-3.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z"
                   />
                 </svg>
-                <AlertTitle>Low Filament Stock</AlertTitle>
+                <AlertTitle>{t('dashboard.lowFilamentStock')}</AlertTitle>
                 <AlertDescription>
                   <div className="space-y-1">
                     {lowFilamentAlerts.map((alert) => (
@@ -457,8 +455,8 @@ export default function Dashboard() {
                           <strong>{alert.groupLabel}</strong>
                           {' '}&mdash;{' '}
                           {alert.spoolCount === 1
-                            ? `${alert.lowestRemaining}g remaining`
-                            : `${alert.spoolCount} spools, lowest: ${alert.lowestRemaining}g`
+                            ? `${alert.lowestRemaining}g ${t('dashboard.remaining')}`
+                            : `${alert.spoolCount} ${t('dashboard.spoolsLowest')} ${alert.lowestRemaining}g`
                           }
                           {alert.lowestPercentage > 0 && ` (${alert.lowestPercentage}%)`}
                         </span>
@@ -466,7 +464,7 @@ export default function Dashboard() {
                     ))}
                     <div className="mt-1">
                       <Link href="/settings" className="underline hover:no-underline">
-                        Configure alerts in Settings
+                        {t('dashboard.configureAlerts')}
                       </Link>
                     </div>
                   </div>

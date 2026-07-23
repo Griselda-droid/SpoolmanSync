@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { SpoolColorSwatch } from '@/components/spool-color-swatch';
 import { buildFilament } from '@/components/reports/usage-by-spool';
 import type { SpoolData } from '@/components/reports/usage-by-spool';
+import { useI18n } from '@/lib/i18n';
 
 interface TimeBucket {
   date: string;
@@ -75,6 +76,7 @@ function useThemeColors() {
 }
 
 export function UsageOverTime({ data, spools, bucket }: UsageOverTimeProps) {
+  const { t } = useI18n();
   const [selectedSpoolId, setSelectedSpoolId] = useState<number | null>(null);
   const theme = useThemeColors();
 
@@ -136,11 +138,11 @@ export function UsageOverTime({ data, spools, bucket }: UsageOverTimeProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle>Usage Over Time</CardTitle>
+        <CardTitle>{t('reports.usageOverTime')}</CardTitle>
       </CardHeader>
       <CardContent>
         {data.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">No usage data</p>
+          <p className="text-muted-foreground text-center py-8">{t('reports.noUsageData')}</p>
         ) : (
           <>
             {/* Spool filter */}
@@ -152,7 +154,7 @@ export function UsageOverTime({ data, spools, bucket }: UsageOverTimeProps) {
                   className="h-7 text-xs"
                   onClick={() => setSelectedSpoolId(null)}
                 >
-                  All Spools
+                  {t('reports.allSpools')}
                 </Button>
                 {spools.map((spool) => (
                   <Button
@@ -217,11 +219,11 @@ export function UsageOverTime({ data, spools, bucket }: UsageOverTimeProps) {
                   labelFormatter={(v) => formatDate(v as string)}
                   formatter={(value, name) => {
                     const weight = `${Number(value).toFixed(1)}g`;
-                    if (selectedSpoolId !== null) return [weight, 'Used'];
+                    if (selectedSpoolId !== null) return [weight, t('reports.usedLabel')];
                     // Resolve spool name from the key
                     const id = Number(String(name).replace('spool_', ''));
                     const spool = spoolLookup.get(id);
-                    return [weight, spool?.spoolName || `Spool #${id}`];
+                    return [weight, spool?.spoolName || t('reports.spoolFallback', { id })];
                   }}
                   contentStyle={{
                     backgroundColor: 'var(--popover)',

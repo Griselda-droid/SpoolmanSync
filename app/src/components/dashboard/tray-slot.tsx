@@ -31,6 +31,7 @@ import { SpoolColorSwatch } from '@/components/spool-color-swatch';
 import type { HATray } from '@/lib/api/homeassistant';
 import type { Spool } from '@/lib/api/spoolman';
 import { buildSpoolSearchValue, parseExtraValue } from '@/lib/api/spoolman';
+import { useI18n } from '@/lib/i18n';
 
 type SortBy = 'id' | 'name' | 'material' | 'vendor';
 
@@ -103,6 +104,7 @@ function sortSpools(spools: Spool[], sortBy: SortBy): Spool[] {
 }
 
 export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mismatch, showLocation }: TraySlotProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [filters, setFilters] = useState<Record<string, string | null>>({});
   const [enabledFields, setEnabledFields] = useState<FilterField[]>([]);
@@ -181,7 +183,7 @@ export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mi
     }
   };
 
-  const trayLabel = tray.is_external ? 'External' : `Tray ${tray.tray_number}`;
+  const trayLabel = tray.is_external ? t('common.external') : t('common.tray', { number: tray.tray_number });
 
   // Check if any enabled filters have values to show
   const hasFilterOptions = enabledFields.some(f => f.values.length > 0);
@@ -259,12 +261,8 @@ export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mi
               <div
                 className="h-8 w-8 rounded-full border-2 border-dashed border-muted-foreground/30 mb-2"
               />
-              <p className="text-xs text-muted-foreground">
-                No spool assigned
-              </p>
-              <p className="text-[10px] text-blue-500 dark:text-blue-400 mt-1">
-                Click to assign
-              </p>
+                <p className="text-xs text-muted-foreground">{t('common.noSpoolAssigned')}</p>
+                <p className="text-[10px] text-blue-500 dark:text-blue-400 mt-1">{t('common.clickToAssign')}</p>
             </div>
           )}
         </button>
@@ -276,11 +274,11 @@ export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mi
         <span
           role="button"
           tabIndex={0}
-          aria-label="Unassign spool"
+          aria-label={t('common.unassignSpool')}
           onClick={handleUnassign}
           onKeyDown={handleUnassignKeyDown}
           className="absolute top-3 right-3 z-10 h-5 w-5 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring transition-colors cursor-pointer text-xs"
-          title="Unassign spool"
+          title={t('common.unassignSpool')}
         >
           ✕
         </span>
@@ -289,10 +287,10 @@ export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mi
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>
-            Assign Spool to {tray.is_external ? 'External Slot' : `Tray ${tray.tray_number}`}
+            {t('common.assignSpoolTo', { slot: tray.is_external ? t('common.external') : t('common.tray', { number: tray.tray_number }) })}
           </DialogTitle>
           <DialogDescription>
-            Search and select a spool from your Spoolman inventory.
+            {t('common.searchAndSelectSpool')}
           </DialogDescription>
         </DialogHeader>
 
@@ -302,13 +300,11 @@ export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mi
             <div className="flex items-start gap-2">
               <span className="text-amber-500 mt-0.5">⚠️</span>
               <div className="space-y-1.5">
-                <p className="font-medium text-amber-700 dark:text-amber-300">
-                  Possible wrong spool assigned
-                </p>
+                  <p className="font-medium text-amber-700 dark:text-amber-300">{t('common.possiblyWrongSpool')}</p>
                 <div className="text-xs text-amber-600 dark:text-amber-400 space-y-0.5">
                   <p>
-                    <span className="opacity-70">RFID reports:</span>{' '}
-                    {mismatch.printerReports.material || 'unknown material'}
+                    <span className="opacity-70">{t('common.rfidReports')}</span>{' '}
+                    {mismatch.printerReports.material || t('common.unknown')}
                     {mismatch.printerReports.color && (
                       <span className="inline-flex items-center gap-1 ml-1">
                         <span
@@ -320,7 +316,7 @@ export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mi
                     )}
                   </p>
                   <p>
-                    <span className="opacity-70">Assigned spool:</span>{' '}
+                    <span className="opacity-70">{t('common.assignedSpool')}</span>{' '}
                     {mismatch.spoolmanHas.material}
                     <span className="inline-flex items-center gap-1 ml-1">
                       <span
@@ -332,7 +328,7 @@ export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mi
                   </p>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Select the correct spool below.
+                  {t('common.selectCorrectSpool')}
                 </p>
               </div>
             </div>
@@ -353,10 +349,10 @@ export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mi
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="id">Sort: ID</SelectItem>
-                    <SelectItem value="name">Sort: Name</SelectItem>
-                    <SelectItem value="material">Sort: Material</SelectItem>
-                    <SelectItem value="vendor">Sort: Vendor</SelectItem>
+                    <SelectItem value="id">{t('common.sortById')}</SelectItem>
+                    <SelectItem value="name">{t('common.sortByName')}</SelectItem>
+                    <SelectItem value="material">{t('common.sortByMaterial')}</SelectItem>
+                    <SelectItem value="vendor">{t('common.sortByVendor')}</SelectItem>
                   </SelectContent>
                 </Select>
               }
@@ -368,18 +364,18 @@ export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mi
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="id">Sort: ID</SelectItem>
-                  <SelectItem value="name">Sort: Name</SelectItem>
-                  <SelectItem value="material">Sort: Material</SelectItem>
-                  <SelectItem value="vendor">Sort: Vendor</SelectItem>
+                  <SelectItem value="id">{t('common.sortById')}</SelectItem>
+                  <SelectItem value="name">{t('common.sortByName')}</SelectItem>
+                  <SelectItem value="material">{t('common.sortByMaterial')}</SelectItem>
+                  <SelectItem value="vendor">{t('common.sortByVendor')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           )}
-          <CommandInput placeholder="Search spools by name, vendor, material, ID, or any field..." />
+          <CommandInput placeholder={t('common.searchSpoolsByFields')} />
           <CommandList className="max-h-[300px]">
-            <CommandEmpty>No spools found matching your filters.</CommandEmpty>
-            <CommandGroup heading={`Available Spools (${filteredSpools.length})`}>
+            <CommandEmpty>{t('common.noSpoolsFound')}</CommandEmpty>
+            <CommandGroup heading={t('common.availableSpools', { count: filteredSpools.length })}>
               {filteredSpools.map((spool) => (
                 <CommandItem
                   key={spool.id}
@@ -403,7 +399,7 @@ export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mi
                     #{spool.id}
                   </span>
                   {assignedSpool?.id === spool.id && (
-                    <Badge variant="outline" className="ml-1">Current</Badge>
+                    <Badge variant="outline" className="ml-1">{t('common.current')}</Badge>
                   )}
                 </CommandItem>
               ))}
@@ -412,7 +408,7 @@ export function TraySlot({ tray, assignedSpool, spools, onAssign, onUnassign, mi
         </Command>
         <div className="flex justify-end">
           <Button variant="ghost" onClick={() => setOpen(false)}>
-            Cancel
+            {t('common.cancel')}
           </Button>
         </div>
       </DialogContent>

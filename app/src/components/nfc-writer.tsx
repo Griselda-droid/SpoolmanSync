@@ -29,6 +29,7 @@ import { SpoolColorSwatch } from '@/components/spool-color-swatch';
 import type { Spool } from '@/lib/api/spoolman';
 import { buildSpoolSearchValue, parseExtraValue } from '@/lib/api/spoolman';
 import { buildExternalUrl } from '@/lib/ingress-path';
+import { useI18n } from '@/lib/i18n';
 
 type SortBy = 'id' | 'name' | 'material' | 'vendor';
 
@@ -123,19 +124,14 @@ function getSpoolFieldValue(spool: Spool, fieldKey: string): string | null {
 }
 
 export function NFCWriter({ spools, directAccessPort, qrBaseUrl }: NFCWriterProps) {
+  const { t } = useI18n();
   const [selectedSpool, setSelectedSpool] = useState<Spool | null>(null);
   const [searchValue, setSearchValue] = useState('');
   const [filters, setFilters] = useState<Record<string, string | null>>({});
   const [enabledFields, setEnabledFields] = useState<FilterField[]>([]);
   const [sortBy, setSortBy] = useState<SortBy>('id');
-  const [nfcSupported, setNfcSupported] = useState<boolean | null>(null);
   const [writeStatus, setWriteStatus] = useState<WriteStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string>('');
-
-  // Check for NFC support on mount
-  useEffect(() => {
-    setNfcSupported('NDEFReader' in window);
-  }, []);
 
   // Fetch filter fields on mount
   useEffect(() => {
@@ -169,6 +165,7 @@ export function NFCWriter({ spools, directAccessPort, qrBaseUrl }: NFCWriterProp
   const nfcUrl = selectedSpool
     ? buildExternalUrl(`/scan/spool/${selectedSpool.id}`, directAccessPort, qrBaseUrl)
     : null;
+  const nfcSupported = typeof window !== 'undefined' && 'NDEFReader' in window;
 
   const handleSpoolSelect = (spool: Spool) => {
     setSelectedSpool(spool);
@@ -198,7 +195,7 @@ export function NFCWriter({ spools, directAccessPort, qrBaseUrl }: NFCWriterProp
           const permissionStatus = await navigator.permissions.query({ name: 'nfc' as PermissionName });
           if (permissionStatus.state === 'denied') {
             setWriteStatus('error');
-            setErrorMessage('NFC permission is blocked. Please enable NFC permissions for this site in your browser settings.');
+            setErrorMessage(t('common.nfcPermissionBlocked'));
             return;
           }
         } catch {
@@ -221,32 +218,23 @@ export function NFCWriter({ spools, directAccessPort, qrBaseUrl }: NFCWriterProp
       setWriteStatus('error');
       if (err instanceof Error) {
         if (err.name === 'NotAllowedError') {
-          setErrorMessage('NFC permission is blocked. Please enable NFC permissions for this site in your browser settings.');
+          setErrorMessage(t('common.nfcPermissionBlocked'));
         } else if (err.name === 'NotSupportedError') {
-          setErrorMessage('NFC is not supported on this device.');
+          setErrorMessage(t('common.nfcNotSupported'));
         } else if (err.name === 'NotReadableError') {
-          setErrorMessage('Could not read the NFC tag. Make sure it\'s positioned correctly.');
+          setErrorMessage(t('common.nfcTagUnreadable'));
         } else if (err.name === 'NetworkError') {
-          setErrorMessage('NFC transfer failed. Please try again.');
+          setErrorMessage(t('common.nfcTransferFailed'));
         } else if (err.name === 'AbortError') {
-          setErrorMessage('NFC operation was cancelled.');
+          setErrorMessage(t('common.nfcCancelled'));
         } else {
-          setErrorMessage(err.message || 'Failed to write to NFC tag.');
+          setErrorMessage(err.message || t('common.nfcWriteFailed'));
         }
       } else {
-        setErrorMessage('An unknown error occurred.');
+        setErrorMessage(t('common.nfcUnknownError'));
       }
     }
   };
-
-  // Show loading state while checking NFC support
-  if (nfcSupported === null) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   // Show unsupported message for non-NFC browsers
   if (!nfcSupported) {
@@ -255,17 +243,16 @@ export function NFCWriter({ spools, directAccessPort, qrBaseUrl }: NFCWriterProp
     return (
       <Alert>
         <Smartphone className="h-4 w-4" />
-        <AlertTitle>Web NFC Not Available</AlertTitle>
+        <AlertTitle>{t('common.webNfcUnavailable')}</AlertTitle>
         <AlertDescription>
           <p className="mb-2">
-            Web NFC is only supported on <strong>Android</strong> with certain browsers
-            (Chrome, Edge, Opera, Samsung Internet).
+            {t('common.webNfcAndroidOnly')}
           </p>
           <p className="text-xs text-muted-foreground mb-3">
-            iOS, Firefox, and Brave do not support Web NFC. Use QR codes or a dedicated NFC writing app instead.
+            {t('common.webNfcUnsupportedIos')}
           </p>
           <p className="text-xs text-muted-foreground">
-            To write manually with another app, use this URL format:
+            {t('common.writeManuallyUrl')}
           </p>
           <p className="text-xs font-mono bg-muted p-2 rounded mt-1 break-all select-all">
             {baseUrl}<span className="text-primary">[SPOOL_ID]</span>
@@ -290,10 +277,10 @@ export function NFCWriter({ spools, directAccessPort, qrBaseUrl }: NFCWriterProp
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="id">Sort: ID</SelectItem>
-                <SelectItem value="name">Sort: Name</SelectItem>
-                <SelectItem value="material">Sort: Material</SelectItem>
-                <SelectItem value="vendor">Sort: Vendor</SelectItem>
+                <SelectItem value="id">{t('common.sortById')}</SelectItem>
+                <SelectItem value="name">{t('common.sortByName')}</SelectItem>
+                <SelectItem value="material">{t('common.sortByMaterial')}</SelectItem>
+                <SelectItem value="vendor">{t('common.sortByVendor')}</SelectItem>
               </SelectContent>
             </Select>
           }
@@ -305,10 +292,10 @@ export function NFCWriter({ spools, directAccessPort, qrBaseUrl }: NFCWriterProp
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="id">Sort: ID</SelectItem>
-              <SelectItem value="name">Sort: Name</SelectItem>
-              <SelectItem value="material">Sort: Material</SelectItem>
-              <SelectItem value="vendor">Sort: Vendor</SelectItem>
+              <SelectItem value="id">{t('common.sortById')}</SelectItem>
+              <SelectItem value="name">{t('common.sortByName')}</SelectItem>
+              <SelectItem value="material">{t('common.sortByMaterial')}</SelectItem>
+              <SelectItem value="vendor">{t('common.sortByVendor')}</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -317,13 +304,13 @@ export function NFCWriter({ spools, directAccessPort, qrBaseUrl }: NFCWriterProp
       {/* Spool Selector */}
       <Command className="rounded-lg border">
         <CommandInput
-          placeholder="Search spools by name, vendor, material, or ID..."
+          placeholder={t('common.searchSpoolsByFields')}
           value={searchValue}
           onValueChange={setSearchValue}
         />
         <CommandList className="max-h-[200px]">
-          <CommandEmpty>No spools found.</CommandEmpty>
-          <CommandGroup heading={`${filteredSpools.length} spools`}>
+          <CommandEmpty>{t('common.noSpoolsFound')}</CommandEmpty>
+          <CommandGroup heading={t('common.availableSpools', { count: filteredSpools.length })}>
             {filteredSpools.map((spool) => (
               <CommandItem
                 key={spool.id}
@@ -369,9 +356,9 @@ export function NFCWriter({ spools, directAccessPort, qrBaseUrl }: NFCWriterProp
           {writeStatus === 'success' && (
             <Alert className="border-green-500 bg-green-500/10">
               <CheckCircle2 className="h-4 w-4 text-green-500" />
-              <AlertTitle className="text-green-500">Success!</AlertTitle>
+              <AlertTitle className="text-green-500">{t('common.nfcSuccess')}</AlertTitle>
               <AlertDescription>
-                NFC tag written successfully. You can now stick it on your spool.
+                {t('common.nfcWrittenSuccessfully')}
               </AlertDescription>
             </Alert>
           )}
@@ -379,7 +366,7 @@ export function NFCWriter({ spools, directAccessPort, qrBaseUrl }: NFCWriterProp
           {writeStatus === 'error' && (
             <Alert variant="destructive">
               <XCircle className="h-4 w-4" />
-              <AlertTitle>Write Failed</AlertTitle>
+              <AlertTitle>{t('common.nfcWriteFailed')}</AlertTitle>
               <AlertDescription>{errorMessage}</AlertDescription>
             </Alert>
           )}
@@ -394,12 +381,12 @@ export function NFCWriter({ spools, directAccessPort, qrBaseUrl }: NFCWriterProp
               {writeStatus === 'writing' ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Hold tag near phone...
+                  {t('common.holdTagNearPhone')}
                 </>
               ) : (
                 <>
                   <Nfc className="h-4 w-4 mr-2" />
-                  Write to NFC Tag
+                  {t('common.writeToNfcTag')}
                 </>
               )}
             </Button>
@@ -411,13 +398,13 @@ export function NFCWriter({ spools, directAccessPort, qrBaseUrl }: NFCWriterProp
                 setErrorMessage('');
               }}
             >
-              Clear
+              {t('common.clear')}
             </Button>
           </div>
 
           {writeStatus === 'idle' && (
             <p className="text-xs text-muted-foreground text-center">
-              Click the button, then hold your NFC tag near your phone's NFC reader.
+              {t('common.holdTagNearPhone')}
             </p>
           )}
 
@@ -432,19 +419,19 @@ export function NFCWriter({ spools, directAccessPort, qrBaseUrl }: NFCWriterProp
       {!selectedSpool && (
         <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
           <Nfc className="h-12 w-12 mb-3 opacity-50" />
-          <p className="text-sm">Select a spool above to write to an NFC tag</p>
+          <p className="text-sm">{t('common.selectSpoolAbove')}</p>
         </div>
       )}
 
       {/* Instructions */}
       <Alert>
         <AlertTriangle className="h-4 w-4" />
-        <AlertTitle>Before You Start</AlertTitle>
+        <AlertTitle>{t('common.beforeYouStart')}</AlertTitle>
         <AlertDescription className="text-xs space-y-1">
-          <p>• Use NTAG213, NTAG215, or NTAG216 NFC sticker tags</p>
-          <p>• These should not interfere with Bambu Lab AMS RFID tags (different protocol), but test first</p>
-          <p>• Place the NFC sticker on the outside of the spool where it won't rub against the AMS</p>
-          <p>• Scanning the tag will open SpoolmanSync's tray assignment page</p>
+          <p>• {t('common.nfcBullet1')}</p>
+          <p>• {t('common.nfcBullet2')}</p>
+          <p>• {t('common.nfcBullet3')}</p>
+          <p>• {t('common.nfcBullet4')}</p>
         </AlertDescription>
       </Alert>
     </div>

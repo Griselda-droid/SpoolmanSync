@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 
 export type Language = 'zh' | 'en';
 
@@ -23,6 +23,22 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.haNotConfigured': 'Home Assistant：未配置',
     'dashboard.spoolmanNotConfigured': 'Spoolman：未配置',
     'dashboard.configureSettings': '配置设置',
+    'dashboard.title': '仪表盘',
+    'dashboard.refresh': '刷新',
+    'dashboard.loading': '加载中...',
+    'dashboard.noPrinters': '未找到打印机',
+    'dashboard.noPrintersDesc': '请确认 Bambu Lab 打印机已通过 ha-bambulab 集成连接到 Home Assistant，并已在 SpoolmanSync 设置中添加。',
+    'dashboard.automationsOutOfDate': '自动化已过期',
+    'dashboard.automationsOutOfDateDesc': 'Home Assistant 中的实体 ID 自上次配置自动化后发生了变化。重新配置前，托盘变化检测和耗材用量跟踪可能无法正常工作。',
+    'dashboard.reconfigureAutomations': '重新配置自动化',
+    'dashboard.assignSpoolsToTrays': '将料盘分配到托盘',
+    'dashboard.hasFilamentNoSpool': '有耗材但未分配料盘。',
+    'dashboard.amsReports': 'AMS 报告：',
+    'dashboard.assignTrayHint': '点击下方托盘卡片，选择当前装入的 Spoolman 料盘。这样可以确保打印完成时准确跟踪耗材用量。',
+    'dashboard.lowFilamentStock': '耗材库存不足',
+    'dashboard.remaining': '剩余',
+    'dashboard.spoolsLowest': '个料盘，最低剩余：',
+    'dashboard.configureAlerts': '在设置中配置提醒',
 
     // Spool List
     'spools.title': '料盘列表',
@@ -54,6 +70,25 @@ const translations: Record<Language, Record<string, string>> = {
     'reports.totalUsage': '总用量',
     'reports.usageBySpool': '按料盘统计',
     'reports.usageOverTime': '用量趋势',
+    'reports.totalUsed': '总用量',
+    'reports.usageEvents': '使用次数',
+    'reports.avgPerEvent': '每次平均',
+    'reports.spoolsUsed': '使用料盘数',
+    'reports.noUsageData': '暂无用量数据',
+    'reports.noFilamentUsageDataYet': '暂无耗材使用数据',
+    'reports.usageRecordedAutomatically': '打印任务完成时会自动记录用量。将料盘分配到托盘并开始打印后，报表会显示在这里。',
+    'reports.allMaterials': '全部材料',
+    'reports.chart': '图表',
+    'reports.table': '表格',
+    'reports.noSpoolsMatch': '没有符合筛选条件的料盘',
+    'reports.spool': '料盘',
+    'reports.used': '已用',
+    'reports.prints': '打印次数',
+    'reports.allSpools': '全部料盘',
+    'reports.showTop10': '显示前 10 个',
+    'reports.showAllSpools': '显示全部 {count} 个料盘',
+    'reports.spoolFallback': '料盘 #{id}',
+    'reports.usedLabel': '已用',
 
     // Scan
     'scan.title': '扫描',
@@ -96,6 +131,14 @@ const translations: Record<Language, Record<string, string>> = {
     'scan.notFound': '在 Spoolman 中未找到料盘',
     'scan.externalSpool': '外置料盘',
     'scan.unknownError': '发生未知错误',
+    'scan.startScanning': '开始扫描',
+    'scan.stopScanning': '停止扫描',
+    'scan.noCamera': '未找到摄像头。请确认摄像头权限已授予。',
+    'scan.cameraLabel': '摄像头：',
+    'scan.cameraFallback': '摄像头',
+    'scan.cameraPermission': '无法访问摄像头。请检查权限。',
+    'scan.cameraNotFound': '未找到摄像头。请确认摄像头权限已授予。',
+    'scan.cameraStartFailed': '无法启动摄像头。请检查权限。',
     'labelSettings.print': '打印设置',
     'labelSettings.paperSize': '纸张尺寸',
     'labelSettings.borders': '边框',
@@ -138,6 +181,61 @@ const translations: Record<Language, Record<string, string>> = {
     'labelSettings.paper.4x6': '4" x 6"（运输）',
     'labelSettings.paper.62mm': '62mm 连续标签（Brother）',
     'labelSettings.paper.custom': '自定义',
+
+    // Automations
+    'automations.title': '自动化',
+    'automations.setupTitle': '自动化设置',
+    'automations.cardTitle': 'Home Assistant 自动化',
+    'automations.cardDesc': '配置 Home Assistant 以自动同步托盘变更到 Spoolman。',
+    'automations.spoolmanSync': 'SpoolmanSync URL',
+    'automations.urlHelp': 'Home Assistant 可以访问此 SpoolmanSync 实例的 URL。',
+    'automations.generate': '生成配置',
+    'automations.generating': '生成中...',
+    'automations.configured': '自动化已配置',
+    'automations.connected': '已连接',
+    'automations.notConfigured': '未配置',
+    'automations.waiting': '等待连接...',
+    'automations.addPrinter': '配置自动化前请先添加 Bambu Lab 打印机。',
+    'automations.goSettings': '前往设置',
+    'automations.checking': '正在检查打印机...',
+    'automations.autoConfigureDesc': '点击下方按钮可自动配置 Home Assistant 以跟踪打印机耗材用量。这将：',
+    'automations.bullet1': '创建自动化以检测托盘变更',
+    'automations.bullet2': '在打印期间跟踪耗材用量',
+    'automations.bullet3': '打印完成后将用量数据同步到 Spoolman',
+    'automations.configure': '配置自动化',
+    'automations.reconfigure': '重新配置自动化',
+    'automations.reconfigureHint': '如果你添加了新打印机或需要更新配置，可使用此功能。',
+    'automations.configuredTracking': '已配置的跟踪',
+    'automations.monitored': '这些打印机和托盘正在被监控',
+    'automations.traysMonitored': '个托盘被监控',
+    'automations.restartRequired': '需要重启 Home Assistant',
+    'automations.restartDesc': '自动化配置已成功写入。Home Assistant 需要重启以加载新的配置（helper 实体、模板和自动化）。',
+    'automations.restartNow': '立即重启',
+    'automations.restartLater': '稍后重启',
+    'automations.restartLaterHint': '如果选择稍后重启，可以在 Home Assistant 自己的设置页方便时再重启。',
+    'automations.addonMode': '加载项模式',
+    'automations.embeddedMode': '内置模式',
+    'automations.spoolTracking': '料盘跟踪自动化',
+    'automations.trackingDesc': 'SpoolmanSync 会在打印完成或托盘变化时自动跟踪耗材用量并同步到 Spoolman。',
+    'automations.haConnected': 'Home Assistant：',
+    'automations.connectedState': '已连接',
+    'automations.waitingState': '等待连接...',
+    'automations.automationsConfigured': '自动化已配置',
+    'automations.activeTracking': 'SpoolmanSync 正在主动跟踪打印机托盘。当你更换耗材或完成打印时，用量会自动同步到 Spoolman。',
+    'automations.noPrinterFound': '未找到打印机',
+    'automations.needPrinter': '在配置自动化前，你需要先添加一台 Bambu Lab 打印机。',
+    'automations.addPrinterHint': '前往设置页并点击“添加打印机”，通过 Bambu Cloud 或 LAN 模式连接打印机。',
+    'automations.goToSettings': '前往设置',
+    'automations.notFoundChecking': '正在检查打印机...',
+    'automations.configureNow': '配置自动化',
+    'automations.reconfiguring': '重新配置中...',
+    'automations.configuredPrinters': '已配置的跟踪',
+    'automations.monitoredPrinters': '这些打印机和托盘正在被监控',
+    'automations.restartTitle': '需要重启 Home Assistant',
+    'automations.restartMessage': '自动化配置已成功写入。Home Assistant 需要重启以加载新的配置（helper 实体、模板和自动化）。',
+    'automations.restartButton': '立即重启',
+    'automations.restartLaterButton': '稍后重启',
+    'automations.restartLaterMessage': '如果选择稍后重启，可以在 Home Assistant 自己的设置页方便时再重启。',
 
     // Settings
     'settings.title': '设置',
@@ -286,6 +384,18 @@ const translations: Record<Language, Record<string, string>> = {
     'settings.spoolmanConnectFailed': '连接 Spoolman 失败',
     'settings.filtersSaved': '筛选设置已保存',
     'settings.filtersSaveFailed': '保存筛选设置失败',
+    'settings.filters': '筛选器设置',
+    'settings.filterFields': '选择将料盘分配到托盘时显示为筛选下拉菜单的字段。无论此设置如何，搜索框都会搜索所有字段。',
+    'settings.loadingFilterOptions': '正在加载筛选选项...',
+    'settings.noFilterValues': '任何料盘都未设置值',
+    'settings.filtersDisabled': '未启用筛选器。仅显示搜索框。',
+    'settings.valuesCount': '个值',
+    'settings.builtinFields': '内置字段',
+    'settings.customExtraFields': '自定义额外字段',
+    'settings.materialField': '材料',
+    'settings.vendorField': '品牌',
+    'settings.locationField': '位置',
+    'settings.lotNumberField': '批号',
     'settings.alertsSaved': '提醒设置已保存',
     'settings.alertsSaveFailed': '保存提醒设置失败',
     'settings.nameRequired': '请输入虚拟打印机名称',
@@ -297,6 +407,63 @@ const translations: Record<Language, Record<string, string>> = {
     'settings.virtualPrinterDeleted': '虚拟打印机已删除',
     'settings.virtualPrinterDeleteFailed': '删除虚拟打印机失败',
     'settings.qrSaveFailed': '保存二维码基础 URL 失败',
+
+    // Common
+    'common.external': '外置',
+    'common.tray': '托盘 {number}',
+    'common.material': '材料',
+    'common.vendor': '品牌',
+    'common.location': '位置',
+    'common.unknown': '未知',
+    'common.remaining': '剩余',
+    'common.noSpoolAssigned': '未分配料盘',
+    'common.clickToAssign': '点击分配',
+    'common.unassignSpool': '取消分配料盘',
+    'common.assignSpoolTo': '将料盘分配到 {slot}',
+    'common.searchAndSelectSpool': '搜索并从 Spoolman 库存中选择料盘。',
+    'common.possiblyWrongSpool': '可能分配了错误的料盘',
+    'common.rfidReports': 'RFID 报告：',
+    'common.assignedSpool': '已分配料盘：',
+    'common.selectCorrectSpool': '请在下方选择正确的料盘。',
+    'common.sortById': '排序：ID',
+    'common.sortByName': '排序：名称',
+    'common.sortByMaterial': '排序：材料',
+    'common.sortByVendor': '排序：品牌',
+    'common.searchSpoolsByFields': '按名称、品牌、材料或 ID 搜索料盘...',
+    'common.noSpoolsFound': '未找到料盘。',
+    'common.availableSpools': '可用料盘 {count} 个',
+    'common.current': '当前',
+    'common.cancel': '取消',
+    'common.all': '全部 {name}',
+    'common.active': '启用中：',
+    'common.clearHistory': '清除历史',
+    'common.selectAll': '全选',
+    'common.deselectAll': '取消全选',
+    'common.expandList': '展开列表',
+    'common.collapseList': '收起列表',
+    'common.webNfcUnavailable': 'Web NFC 不可用',
+    'common.webNfcAndroidOnly': 'Web NFC 仅在 Android 上的部分浏览器中受支持（Chrome、Edge、Opera、Samsung Internet）。',
+    'common.webNfcUnsupportedIos': 'iOS、Firefox 和 Brave 不支持 Web NFC。请改用二维码或专用 NFC 写入应用。',
+    'common.writeManuallyUrl': '如需使用其他应用手动写入，请使用以下 URL 格式：',
+    'common.nfcPermissionBlocked': 'NFC 权限被阻止。请在浏览器设置中为此网站启用 NFC 权限。',
+    'common.nfcNotSupported': '此设备不支持 NFC。',
+    'common.nfcTagUnreadable': '无法读取 NFC 标签。请确认它放置正确。',
+    'common.nfcTransferFailed': 'NFC 传输失败。请重试。',
+    'common.nfcCancelled': 'NFC 操作已取消。',
+    'common.nfcWriteFailed': '写入 NFC 标签失败。',
+    'common.nfcUnknownError': '发生未知错误。',
+    'common.nfcSuccess': '成功！',
+    'common.nfcWrittenSuccessfully': 'NFC 标签写入成功。你现在可以把它贴到料盘上。',
+    'common.writeToNfcTag': '写入 NFC 标签',
+    'common.holdTagNearPhone': '将标签靠近手机...',
+    'common.clear': '清除',
+    'common.selectSpoolAbove': '先在上方选择一个料盘，再写入 NFC 标签',
+    'common.beforeYouStart': '开始前请注意',
+    'common.nfcBullet1': '使用 NTAG213、NTAG215 或 NTAG216 NFC 贴纸标签',
+    'common.nfcBullet2': '这些标签不会干扰 Bambu Lab AMS 的 RFID 标签（协议不同），但请先测试',
+    'common.nfcBullet3': '将 NFC 贴纸贴在料盘外侧，避免与 AMS 摩擦',
+    'common.nfcBullet4': '扫描该标签将打开 SpoolmanSync 的托盘分配页面',
+    'common.writeToNfcTagTitle': '写入 NFC 标签',
 
     // Add Spool Dialog
     'addSpool.title': '添加料盘',
@@ -352,6 +519,60 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.haNotConfigured': 'Home Assistant: Not configured',
     'dashboard.spoolmanNotConfigured': 'Spoolman: Not configured',
     'dashboard.configureSettings': 'Configure Settings',
+    'dashboard.title': 'Dashboard',
+    'dashboard.refresh': 'Refresh',
+    'dashboard.loading': 'Loading...',
+    'dashboard.noPrinters': 'No Printers Found',
+    'dashboard.noPrintersDesc': 'Make sure your Bambu Lab printer is connected to Home Assistant via the ha-bambulab integration and added in SpoolmanSync Settings.',
+    'dashboard.automationsOutOfDate': 'Automations Out of Date',
+    'dashboard.automationsOutOfDateDesc': 'Entity IDs in Home Assistant have changed since automations were last configured. Tray change detection and filament usage tracking may not work until you reconfigure.',
+    'dashboard.reconfigureAutomations': 'Reconfigure Automations',
+    'dashboard.assignSpoolsToTrays': 'Assign Spools to Trays',
+    'dashboard.hasFilamentNoSpool': 'has filament but no assigned spool.',
+    'dashboard.amsReports': 'AMS reports:',
+    'dashboard.assignTrayHint': 'Click on the tray card below to select which Spoolman spool is loaded. This ensures accurate filament tracking when prints complete.',
+    'dashboard.lowFilamentStock': 'Low Filament Stock',
+    'dashboard.remaining': 'remaining',
+    'dashboard.spoolsLowest': 'spools, lowest:',
+    'dashboard.configureAlerts': 'Configure alerts in Settings',
+
+    // Activity Logs
+    'logs.title': '活动日志',
+    'logs.live': '实时',
+    'logs.refresh': '刷新',
+    'logs.loading': '加载中...',
+    'logs.allEvents': '全部事件',
+    'logs.showAllActivity': '显示所有活动',
+    'logs.actions': '操作',
+    'logs.actionsDesc': '料盘分配和用量',
+    'logs.trayChanges': '托盘变化',
+    'logs.trayChangesDesc': '所有检测到的托盘变化',
+    'logs.errors': '错误',
+    'logs.errorsDesc': '仅显示错误',
+    'logs.activity': '活动',
+    'logs.totalEvents': '个事件',
+    'logs.empty': '暂无活动日志',
+    'logs.details': '详情',
+    'logs.edit': '编辑',
+    'logs.delete': '删除',
+    'logs.previous': '上一页',
+    'logs.next': '下一页',
+    'logs.pageOf': '第 {page} 页，共 {totalPages} 页',
+    'logs.show': '显示：',
+    'logs.editUsage': '编辑用量事件',
+    'logs.editUsageDesc': '修正此用量事件记录的克数。除非勾选下方选项，否则只会更新 SpoolmanSync 统计数据。',
+    'logs.usedWeight': '已用重量（克）',
+    'logs.adjustSpoolman': '同时调整 Spoolman 剩余重量',
+    'logs.save': '保存',
+    'logs.saving': '保存中...',
+    'logs.deleteUsage': '删除用量事件',
+    'logs.deleteUsageDesc': '从 SpoolmanSync 统计数据中删除此用量事件。除非勾选下方选项，否则不会更改 Spoolman 中料盘的剩余重量。',
+    'logs.returnWeight': '同时调整 Spoolman 剩余重量（将扣除的克数返还到料盘）',
+    'logs.deleting': '删除中...',
+    'logs.validWeight': '请输入有效的非负重量（克）',
+    'logs.updated': '用量事件已更新',
+    'logs.deleted': '用量事件已删除',
+    'logs.fetchFailed': '获取日志失败',
 
     // Scan
     'scan.title': 'Scan',
@@ -615,6 +836,18 @@ const translations: Record<Language, Record<string, string>> = {
     'settings.spoolmanConnectFailed': 'Failed to connect to Spoolman',
     'settings.filtersSaved': 'Filter settings saved',
     'settings.filtersSaveFailed': 'Failed to save filter settings',
+    'settings.filters': 'Spool Filter Configuration',
+    'settings.filterFields': 'Choose which fields appear as filter dropdowns when assigning spools to trays. The search box always searches all fields regardless of this setting.',
+    'settings.loadingFilterOptions': 'Loading filter options...',
+    'settings.noFilterValues': 'No values set on any spools',
+    'settings.filtersDisabled': 'No filters enabled. Only the search box will be shown.',
+    'settings.valuesCount': 'values',
+    'settings.builtinFields': 'Built-in Fields',
+    'settings.customExtraFields': 'Custom Extra Fields',
+    'settings.materialField': 'Material',
+    'settings.vendorField': 'Vendor',
+    'settings.locationField': 'Location',
+    'settings.lotNumberField': 'Lot Number',
     'settings.alertsSaved': 'Alert settings saved',
     'settings.alertsSaveFailed': 'Failed to save alert settings',
     'settings.nameRequired': 'Please enter a name for the virtual printer',
@@ -626,6 +859,63 @@ const translations: Record<Language, Record<string, string>> = {
     'settings.virtualPrinterDeleted': 'Virtual printer deleted',
     'settings.virtualPrinterDeleteFailed': 'Failed to delete virtual printer',
     'settings.qrSaveFailed': 'Failed to save QR base URL',
+
+    // Common
+    'common.external': 'External',
+    'common.tray': 'Tray {number}',
+    'common.material': 'Material',
+    'common.vendor': 'Vendor',
+    'common.location': 'Location',
+    'common.unknown': 'Unknown',
+    'common.remaining': 'Remaining',
+    'common.noSpoolAssigned': 'No spool assigned',
+    'common.clickToAssign': 'Click to assign',
+    'common.unassignSpool': 'Unassign spool',
+    'common.assignSpoolTo': 'Assign Spool to {slot}',
+    'common.searchAndSelectSpool': 'Search and select a spool from your Spoolman inventory.',
+    'common.possiblyWrongSpool': 'Possible wrong spool assigned',
+    'common.rfidReports': 'RFID reports:',
+    'common.assignedSpool': 'Assigned spool:',
+    'common.selectCorrectSpool': 'Select the correct spool below.',
+    'common.sortById': 'Sort: ID',
+    'common.sortByName': 'Sort: Name',
+    'common.sortByMaterial': 'Sort: Material',
+    'common.sortByVendor': 'Sort: Vendor',
+    'common.searchSpoolsByFields': 'Search spools by name, vendor, material, or ID...',
+    'common.noSpoolsFound': 'No spools found.',
+    'common.availableSpools': 'Available Spools {count}',
+    'common.current': 'Current',
+    'common.cancel': 'Cancel',
+    'common.all': 'All {name}',
+    'common.active': 'Active:',
+    'common.clearHistory': 'Clear history',
+    'common.selectAll': 'Select All',
+    'common.deselectAll': 'Deselect All',
+    'common.expandList': 'Expand list',
+    'common.collapseList': 'Collapse list',
+    'common.webNfcUnavailable': 'Web NFC Not Available',
+    'common.webNfcAndroidOnly': 'Web NFC is only supported on Android with certain browsers (Chrome, Edge, Opera, Samsung Internet).',
+    'common.webNfcUnsupportedIos': 'iOS, Firefox, and Brave do not support Web NFC. Use QR codes or a dedicated NFC writing app instead.',
+    'common.writeManuallyUrl': 'To write manually with another app, use this URL format:',
+    'common.nfcPermissionBlocked': 'NFC permission is blocked. Please enable NFC permissions for this site in your browser settings.',
+    'common.nfcNotSupported': 'NFC is not supported on this device.',
+    'common.nfcTagUnreadable': 'Could not read the NFC tag. Make sure it\'s positioned correctly.',
+    'common.nfcTransferFailed': 'NFC transfer failed. Please try again.',
+    'common.nfcCancelled': 'NFC operation was cancelled.',
+    'common.nfcWriteFailed': 'Failed to write to NFC tag.',
+    'common.nfcUnknownError': 'An unknown error occurred.',
+    'common.nfcSuccess': 'Success!',
+    'common.nfcWrittenSuccessfully': 'NFC tag written successfully. You can now stick it on your spool.',
+    'common.writeToNfcTag': 'Write to NFC Tag',
+    'common.holdTagNearPhone': 'Hold tag near phone...',
+    'common.clear': 'Clear',
+    'common.selectSpoolAbove': 'Select a spool above to write to an NFC tag',
+    'common.beforeYouStart': 'Before You Start',
+    'common.nfcBullet1': 'Use NTAG213, NTAG215, or NTAG216 NFC sticker tags',
+    'common.nfcBullet2': 'These should not interfere with Bambu Lab AMS RFID tags (different protocol), but test first',
+    'common.nfcBullet3': 'Place the NFC sticker on the outside of the spool where it won\'t rub against the AMS',
+    'common.nfcBullet4': 'Scanning the tag will open SpoolmanSync\'s tray assignment page',
+    'common.writeToNfcTagTitle': 'Write NFC Tag',
 
     // Add Spool Dialog
     'addSpool.title': 'Add Spool',
@@ -678,7 +968,7 @@ function detectLanguage(): Language {
 interface I18nContextType {
   lang: Language;
   setLang: (lang: Language) => void;
-  t: (key: string) => string;
+  t: (key: string, params?: Record<string, string | number>) => string;
 }
 
 const I18nContext = createContext<I18nContextType>({
@@ -688,24 +978,27 @@ const I18nContext = createContext<I18nContextType>({
 });
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-  const [lang, setLangState] = useState<Language>('zh');
-
-  useEffect(() => {
-    setLangState(detectLanguage());
-  }, []);
+  const [lang, setLangState] = useState<Language>(detectLanguage);
 
   const setLang = useCallback((newLang: Language) => {
     setLangState(newLang);
-    localStorage.setItem('spoolmansync-lang', newLang);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('spoolmansync-lang', newLang);
+    }
   }, []);
 
   const t = useCallback(
-    (key: string): string => {
+    (key: string, params?: Record<string, string | number>): string => {
       const dict = translations[lang];
-      if (dict && dict[key]) return dict[key];
+      let value = dict?.[key];
       const enDict = translations.en;
-      if (enDict && enDict[key]) return enDict[key];
-      return key;
+      if (!value) value = enDict?.[key] ?? translations.zh[key];
+      if (!value) return key;
+      if (!params) return value;
+      return value.replace(/\{(\w+)\}/g, (match, name: string) => {
+        const replacement = params[name];
+        return replacement === undefined ? match : String(replacement);
+      });
     },
     [lang]
   );

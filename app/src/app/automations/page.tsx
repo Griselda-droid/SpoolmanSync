@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { useI18n } from '@/lib/i18n';
 
 interface PrinterRegistration {
   prefix: string;
@@ -38,6 +39,7 @@ interface RegisteredAutomation {
 }
 
 export default function AutomationsPage() {
+  const { t } = useI18n();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [automationData, setAutomationData] = useState<AutomationData | null>(null);
@@ -146,9 +148,9 @@ export default function AutomationsPage() {
       }
 
       setShowRestartModal(false);
-      toast.success('Home Assistant is restarting. This may take a minute.');
+      toast.success(t('automations.restartMessage'));
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to restart');
+      toast.error(err instanceof Error ? err.message : t('automations.restartTitle'));
     } finally {
       setRestarting(false);
     }
@@ -157,7 +159,7 @@ export default function AutomationsPage() {
   // Generate config for manual mode
   const generateConfig = async () => {
     if (!webhookUrl.trim()) {
-      toast.error('Please enter the SpoolmanSync URL');
+      toast.error(t('automations.spoolmanSync'));
       return;
     }
     setLoading(true);
@@ -182,9 +184,9 @@ export default function AutomationsPage() {
 
       const data = await res.json();
       setAutomationData(data);
-      toast.success(`Found ${data.trayCount} trays to monitor`);
+      toast.success(`${t('automations.traysMonitored')} ${data.trayCount}`);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to generate config');
+      toast.error(err instanceof Error ? err.message : t('automations.generate'));
     } finally {
       setLoading(false);
     }
@@ -214,9 +216,9 @@ export default function AutomationsPage() {
         setCopiedAutomations(true);
         setTimeout(() => setCopiedAutomations(false), 2000);
       }
-      toast.success(`${type === 'config' ? 'Configuration' : 'Automations'} copied to clipboard`);
+      toast.success(type === 'config' ? 'configuration.yaml copied to clipboard' : 'automations.yaml copied to clipboard');
     } catch (err) {
-      toast.error('Failed to copy to clipboard');
+      toast.error(err instanceof Error ? err.message : t('settings.copyFailed'));
     }
   };
 
@@ -236,10 +238,10 @@ export default function AutomationsPage() {
 
       if (!res.ok) throw new Error('Failed to register automations');
 
-      toast.success('Automations marked as configured');
+      toast.success(t('automations.configured'));
       fetchRegistered();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Failed to register');
+      toast.error(err instanceof Error ? err.message : t('automations.configureNow'));
     } finally {
       setLoading(false);
     }
@@ -251,23 +253,23 @@ export default function AutomationsPage() {
       <div className="min-h-screen bg-background">
         <Nav />
         <main className="w-full max-w-4xl mx-auto py-6 px-3 sm:px-4 md:px-6">
-          <h1 className="text-xl sm:text-2xl font-bold mb-6">Automations</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mb-6">{t('automations.title')}</h1>
 
           <div className="space-y-6">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  Spool Tracking Automations
-                  <Badge variant="secondary">{addonMode ? 'Add-on Mode' : 'Embedded Mode'}</Badge>
+                  {t('automations.spoolTracking')}
+                  <Badge variant="secondary">{addonMode ? t('automations.addonMode') : t('automations.embeddedMode')}</Badge>
                 </CardTitle>
                 <CardDescription>
-                  SpoolmanSync automatically tracks filament usage and syncs with Spoolman when prints complete or trays change.
+                  {t('automations.trackingDesc')}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-4">
                   <div className={`h-3 w-3 rounded-full ${haConnected ? 'bg-green-500' : 'bg-gray-300'}`} />
-                  <span>Home Assistant: {haConnected ? 'Connected' : 'Waiting for connection...'}</span>
+                  <span>{t('automations.haConnected')} {haConnected ? t('automations.connectedState') : t('automations.waitingState')}</span>
                 </div>
 
                 {configured ? (
@@ -276,11 +278,10 @@ export default function AutomationsPage() {
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
-                      <span className="font-medium">Automations Configured</span>
+                      <span className="font-medium">{t('automations.automationsConfigured')}</span>
                     </div>
                     <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                      SpoolmanSync is actively tracking your printer trays. When you change filaments or finish a print,
-                      the usage will be automatically synced with Spoolman.
+                      {t('automations.activeTracking')}
                     </p>
                   </div>
                 ) : printerCount === 0 ? (
@@ -289,41 +290,39 @@ export default function AutomationsPage() {
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                       </svg>
-                      <span className="font-medium">No Printer Found</span>
+                      <span className="font-medium">{t('automations.noPrinterFound')}</span>
                     </div>
                     <p className="text-sm text-amber-600 dark:text-amber-400 mb-3">
-                      You need to add a Bambu Lab printer before configuring automations.
-                      Go to the Settings page and click &quot;Add Printer&quot; to connect your printer via Bambu Cloud or LAN mode.
+                      {t('automations.needPrinter')}
                     </p>
                     <Button
                       variant="outline"
                       onClick={() => router.push('/settings')}
                     >
-                      Go to Settings
+                      {t('automations.goToSettings')}
                     </Button>
                   </div>
                 ) : checkingPrinters ? (
                   <div className="p-4 bg-muted rounded-lg flex items-center gap-3">
                     <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
-                    <span className="text-sm text-muted-foreground">Checking for printers...</span>
+                    <span className="text-sm text-muted-foreground">{t('automations.checking')}</span>
                   </div>
                 ) : (
                   <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
                     <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
-                      Click the button below to automatically configure Home Assistant to track your printer&apos;s filament usage.
-                      This will:
+                      {t('automations.autoConfigureDesc')}
                     </p>
                     <ul className="list-disc list-inside text-sm text-blue-600 dark:text-blue-400 space-y-1 mb-4">
-                      <li>Create automations to detect tray changes</li>
-                      <li>Track filament usage during prints</li>
-                      <li>Sync usage data with Spoolman when prints complete</li>
+                      <li>{t('automations.bullet1')}</li>
+                      <li>{t('automations.bullet2')}</li>
+                      <li>{t('automations.bullet3')}</li>
                     </ul>
                     <Button
                       onClick={autoConfigure}
                       disabled={loading || !haConnected || printerCount === 0}
                       size="lg"
                     >
-                      {loading ? 'Configuring...' : 'Configure Automations'}
+                      {loading ? t('automations.generating') : t('automations.configure')}
                     </Button>
                   </div>
                 )}
@@ -335,10 +334,10 @@ export default function AutomationsPage() {
                       onClick={autoConfigure}
                       disabled={loading}
                     >
-                      {loading ? 'Reconfiguring...' : 'Reconfigure Automations'}
+                      {loading ? t('automations.reconfiguring') : t('automations.reconfigure')}
                     </Button>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Use this if you&apos;ve added new printers or need to update the configuration.
+                      {t('automations.reconfigureHint')}
                     </p>
                   </div>
                 )}
@@ -349,10 +348,8 @@ export default function AutomationsPage() {
             {registeredAutomations.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Configured Tracking</CardTitle>
-                  <CardDescription>
-                    These printers and trays are being monitored
-                  </CardDescription>
+                  <CardTitle>{t('automations.configuredTracking')}</CardTitle>
+                  <CardDescription>{t('automations.monitored')}</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
@@ -364,7 +361,7 @@ export default function AutomationsPage() {
                         <div>
                           <div className="font-medium">{auto.printerId}</div>
                           <div className="text-sm text-muted-foreground">
-                            {auto.trayId.split(',').length} tray(s) monitored
+                            {auto.trayId.split(',').length} {t('automations.traysMonitored')}
                           </div>
                         </div>
                         <span className="text-xs text-muted-foreground">
@@ -382,10 +379,8 @@ export default function AutomationsPage() {
           <Dialog open={showRestartModal} onOpenChange={setShowRestartModal}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Home Assistant Restart Required</DialogTitle>
-                <DialogDescription>
-                  The automation configuration has been written successfully. Home Assistant needs to restart to load the new configuration (helper entities, templates, and automations).
-                </DialogDescription>
+                <DialogTitle>{t('automations.restartRequired')}</DialogTitle>
+                <DialogDescription>{t('automations.restartDesc')}</DialogDescription>
               </DialogHeader>
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <Button
@@ -393,7 +388,7 @@ export default function AutomationsPage() {
                   disabled={restarting}
                   className="flex-1"
                 >
-                  {restarting ? 'Restarting...' : 'Restart Now'}
+                  {restarting ? t('automations.generating') : t('automations.restartNow')}
                 </Button>
                 <Button
                   variant="outline"
@@ -401,11 +396,11 @@ export default function AutomationsPage() {
                   disabled={restarting}
                   className="flex-1"
                 >
-                  Restart Later
+                  {t('automations.restartLater')}
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                If you choose to restart later, you can restart Home Assistant from its own Settings page when convenient.
+                {t('automations.restartLaterHint')}
               </p>
             </DialogContent>
           </Dialog>
@@ -419,32 +414,30 @@ export default function AutomationsPage() {
     <div className="min-h-screen bg-background">
       <Nav />
       <main className="w-full max-w-4xl mx-auto py-6 px-3 sm:px-4 md:px-6">
-        <h1 className="text-xl sm:text-2xl font-bold mb-6">Automations Setup</h1>
+        <h1 className="text-xl sm:text-2xl font-bold mb-6">{t('automations.setupTitle')}</h1>
 
         <div className="space-y-6">
           {/* Status Card */}
           <Card>
             <CardHeader>
-              <CardTitle>Home Assistant Automations</CardTitle>
-              <CardDescription>
-                Configure Home Assistant to automatically sync tray changes with Spoolman
-              </CardDescription>
+              <CardTitle>{t('automations.cardTitle')}</CardTitle>
+              <CardDescription>{t('automations.cardDesc')}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-4">
                 <div className={`h-3 w-3 rounded-full ${haConnected ? 'bg-green-500' : 'bg-gray-300'}`} />
-                <span>Home Assistant: {haConnected ? 'Connected' : 'Not configured'}</span>
+                <span>{t('automations.haConnected')} {haConnected ? t('automations.connected') : t('automations.notConfigured')}</span>
               </div>
 
               {registeredAutomations.length > 0 && (
                 <div className="flex items-center gap-4">
-                  <Badge variant="secondary">{registeredAutomations.length} automations registered</Badge>
+                  <Badge variant="secondary">{registeredAutomations.length} {t('automations.configuredTracking')}</Badge>
                 </div>
               )}
 
               <div className="space-y-2">
                 <label htmlFor="webhookUrl" className="text-sm font-medium">
-                  SpoolmanSync URL
+                  {t('automations.spoolmanSync')}
                 </label>
                 <input
                   id="webhookUrl"
@@ -455,7 +448,7 @@ export default function AutomationsPage() {
                   className="w-full px-3 py-2 border rounded-md bg-background text-sm"
                 />
                 <p className="text-xs text-muted-foreground">
-                  The URL where Home Assistant can reach this SpoolmanSync instance.
+                  {t('automations.urlHelp')}
                   {webhookUrl.includes('localhost') && (
                     <span className="text-amber-600 dark:text-amber-400 block mt-1">
                       Note: &quot;localhost&quot; only works if Home Assistant is on the same machine.
@@ -466,7 +459,7 @@ export default function AutomationsPage() {
               </div>
 
               <Button onClick={generateConfig} disabled={loading || !haConnected || !webhookUrl.trim()}>
-                {loading ? 'Generating...' : 'Generate Configuration'}
+                {loading ? t('automations.generating') : t('automations.generate')}
               </Button>
             </CardContent>
           </Card>
@@ -479,7 +472,7 @@ export default function AutomationsPage() {
                 <CardHeader>
                   <CardTitle className="flex items-center justify-between">
                     <span>configuration.yaml</span>
-                    <Badge>{automationData.printerCount} printer(s)</Badge>
+                    <Badge>{automationData.printerCount} printers</Badge>
                   </CardTitle>
                   <CardDescription>
                     Add this to your Home Assistant <code>configuration.yaml</code> file

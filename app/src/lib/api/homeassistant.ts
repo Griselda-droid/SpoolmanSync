@@ -115,8 +115,9 @@ function profileMatchesBrand(
   vendorName?: string | null,
 ): boolean {
   const requestedVendor = normalizeFilamentText(vendorName);
+  const isKnownVendor = requestedVendor === 'bambu lab' || requestedVendor === 'generic';
   if (requestedVendor) {
-    return normalizeFilamentText(profileVendor) === requestedVendor;
+    return normalizeFilamentText(profileVendor) === (isKnownVendor ? requestedVendor : 'generic');
   }
   return brand === 'Bambu'
     ? normalizeFilamentText(profileVendor) === 'bambu lab'
@@ -137,7 +138,10 @@ function requestedMaterialVariant(
   vendorName?: string | null,
 ): string {
   const normalizedMaterial = normalizeFilamentText(material);
-  const vendor = vendorName || (brand === 'Bambu' ? 'Bambu Lab' : 'Generic');
+  const normalizedVendorName = normalizeFilamentText(vendorName);
+  const vendor = normalizedVendorName === 'bambu lab'
+    ? 'Bambu Lab'
+    : 'Generic';
   const normalizedVendor = normalizeFilamentText(vendor);
   return normalizedMaterial.startsWith(`${normalizedVendor} `)
     ? normalizedMaterial.slice(normalizedVendor.length + 1)

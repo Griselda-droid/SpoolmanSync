@@ -151,11 +151,8 @@ export default function ReportsPage() {
           </div>
         ) : data && data.summary.totalPrints === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground text-lg mb-2">No filament usage data yet</p>
-            <p className="text-muted-foreground text-sm">
-              Usage is recorded automatically when print jobs complete. Assign spools to trays
-              and start printing to see reports here.
-            </p>
+            <p className="text-muted-foreground text-lg mb-2">{t('reports.noFilamentUsageDataYet')}</p>
+            <p className="text-muted-foreground text-sm">{t('reports.usageRecordedAutomatically')}</p>
           </div>
         ) : data ? (
           <div className="space-y-6">

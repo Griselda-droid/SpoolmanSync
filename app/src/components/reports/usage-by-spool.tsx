@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SpoolColorSwatch } from '@/components/spool-color-swatch';
 import type { Filament } from '@/lib/api/spoolman';
+import { useI18n } from '@/lib/i18n';
 
 export interface SpoolData {
   spoolId: number;
@@ -88,6 +89,7 @@ function useThemeColors() {
 }
 
 export function UsageBySpool({ data }: UsageBySpoolProps) {
+  const { t } = useI18n();
   const [showAll, setShowAll] = useState(false);
   const [materialFilter, setMaterialFilter] = useState<string | null>(null);
   const theme = useThemeColors();
@@ -121,11 +123,11 @@ export function UsageBySpool({ data }: UsageBySpoolProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle>Usage by Spool</CardTitle>
+        <CardTitle>{t('reports.usageBySpool')}</CardTitle>
       </CardHeader>
       <CardContent>
         {data.length === 0 ? (
-          <p className="text-muted-foreground text-center py-8">No usage data</p>
+          <p className="text-muted-foreground text-center py-8">{t('reports.noUsageData')}</p>
         ) : (
           <>
             {/* Material filter */}
@@ -137,7 +139,7 @@ export function UsageBySpool({ data }: UsageBySpoolProps) {
                   className="h-7 text-xs"
                   onClick={() => setMaterialFilter(null)}
                 >
-                  All Materials
+                  {t('reports.allMaterials')}
                 </Button>
                 {materials.map((mat) => (
                   <Button
@@ -155,13 +157,13 @@ export function UsageBySpool({ data }: UsageBySpoolProps) {
 
             <Tabs defaultValue="chart">
               <TabsList>
-                <TabsTrigger value="chart">Chart</TabsTrigger>
-                <TabsTrigger value="table">Table</TabsTrigger>
+                <TabsTrigger value="chart">{t('reports.chart')}</TabsTrigger>
+                <TabsTrigger value="table">{t('reports.table')}</TabsTrigger>
               </TabsList>
 
               <TabsContent value="chart">
                 {chartData.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No spools match this filter</p>
+                  <p className="text-muted-foreground text-center py-8">{t('reports.noSpoolsMatch')}</p>
                 ) : (
                   <>
                     <ResponsiveContainer width="100%" height={Math.max(200, chartData.length * 40)}>
@@ -208,7 +210,7 @@ export function UsageBySpool({ data }: UsageBySpoolProps) {
                           stroke={theme.border}
                         />
                         <Tooltip
-                          formatter={(value) => [`${Number(value).toFixed(1)}g`, 'Used']}
+                          formatter={(value) => [`${Number(value).toFixed(1)}g`, t('reports.usedLabel')]}
                           labelFormatter={(id) => nameById.get(Number(id)) ?? `#${id}`}
                           contentStyle={{
                             backgroundColor: 'var(--popover)',
@@ -242,7 +244,7 @@ export function UsageBySpool({ data }: UsageBySpoolProps) {
                           size="sm"
                           onClick={() => setShowAll(!showAll)}
                         >
-                          {showAll ? 'Show top 10' : `Show all ${filteredData.length} spools`}
+                          {showAll ? t('reports.showTop10') : t('reports.showAllSpools', { count: filteredData.length })}
                         </Button>
                       </div>
                     )}
@@ -252,17 +254,17 @@ export function UsageBySpool({ data }: UsageBySpoolProps) {
 
               <TabsContent value="table">
                 {filteredData.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">No spools match this filter</p>
+                  <p className="text-muted-foreground text-center py-8">{t('reports.noSpoolsMatch')}</p>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b text-left">
-                          <th className="pb-2 pr-4">Spool</th>
-                          <th className="pb-2 pr-4 hidden sm:table-cell">Material</th>
-                          <th className="pb-2 pr-4 hidden md:table-cell">Vendor</th>
-                          <th className="pb-2 pr-4 text-right">Used</th>
-                          <th className="pb-2 text-right">Prints</th>
+                          <th className="pb-2 pr-4">{t('reports.spool')}</th>
+                          <th className="pb-2 pr-4 hidden sm:table-cell">{t('labelSettings.material')}</th>
+                          <th className="pb-2 pr-4 hidden md:table-cell">{t('labelSettings.vendor')}</th>
+                          <th className="pb-2 pr-4 text-right">{t('reports.used')}</th>
+                          <th className="pb-2 text-right">{t('reports.prints')}</th>
                         </tr>
                       </thead>
                       <tbody>

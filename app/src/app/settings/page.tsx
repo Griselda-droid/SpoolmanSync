@@ -1404,21 +1404,21 @@ function SettingsContent() {
               <Separator />
               <Card>
                 <CardHeader>
-                  <CardTitle>{t('settings.filterConfig')}</CardTitle>
+                  <CardTitle>{t('settings.filters')}</CardTitle>
                   <CardDescription>
-                    {t('settings.filterConfigDesc')}
+                    {t('settings.filterFields')}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {filterFields.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
-                      {t('settings.loadingFilters')}
+                      {t('settings.loadingFilterOptions')}
                     </p>
                   ) : (
                     <div className="space-y-4">
                       {/* Built-in fields */}
                       <div>
-                        <h4 className="text-sm font-medium mb-2 text-muted-foreground">{t('settings.builtInFields')}</h4>
+                        <h4 className="text-sm font-medium mb-2 text-muted-foreground">{t('settings.builtinFields')}</h4>
                         <div className="space-y-3">
                           {filterFields.filter(f => f.builtIn).map((field) => (
                             <div key={field.key} className="flex items-center space-x-3">
@@ -1433,15 +1433,19 @@ function SettingsContent() {
                                   htmlFor={`filter-${field.key}`}
                                   className="text-sm font-medium cursor-pointer"
                                 >
-                                  {field.name}
+                                  {field.key === 'material' ? t('settings.materialField')
+                                    : field.key === 'vendor' ? t('settings.vendorField')
+                                    : field.key === 'location' ? t('settings.locationField')
+                                    : field.key === 'lot_nr' ? t('settings.lotNumberField')
+                                    : field.name}
                                 </Label>
                                 {field.values.length > 0 ? (
                                   <p className="text-xs text-muted-foreground">
-                                    {field.values.length} {t('settings.values')}: {field.values.slice(0, 3).join(', ')}{field.values.length > 3 ? '...' : ''}
+                                    {field.values.length} {t('settings.valuesCount')}: {field.values.slice(0, 3).join(', ')}{field.values.length > 3 ? '...' : ''}
                                   </p>
                                 ) : (
                                   <p className="text-xs text-muted-foreground italic">
-                                    {t('settings.noValues')}
+                                    {t('settings.noFilterValues')}
                                   </p>
                                 )}
                               </div>
@@ -1453,7 +1457,7 @@ function SettingsContent() {
                       {/* Extra fields (if any) */}
                       {filterFields.some(f => !f.builtIn) && (
                         <div>
-                          <h4 className="text-sm font-medium mb-2 text-muted-foreground">{t('settings.customFields')}</h4>
+                          <h4 className="text-sm font-medium mb-2 text-muted-foreground">{t('settings.customExtraFields')}</h4>
                           <div className="space-y-3">
                             {filterFields.filter(f => !f.builtIn).map((field) => (
                               <div key={field.key} className="flex items-center space-x-3">
@@ -1472,11 +1476,11 @@ function SettingsContent() {
                                   </Label>
                                   {field.values.length > 0 ? (
                                     <p className="text-xs text-muted-foreground">
-                                      {field.values.length} {t('settings.values')}: {field.values.slice(0, 3).join(', ')}{field.values.length > 3 ? '...' : ''}
+                                      {field.values.length} {t('settings.valuesCount')}: {field.values.slice(0, 3).join(', ')}{field.values.length > 3 ? '...' : ''}
                                     </p>
                                   ) : (
                                     <p className="text-xs text-muted-foreground italic">
-                                      {t('settings.noValues')}
+                                      {t('settings.noFilterValues')}
                                     </p>
                                   )}
                                 </div>
@@ -1488,7 +1492,7 @@ function SettingsContent() {
 
                       {enabledFilters.length === 0 && (
                         <p className="text-xs text-muted-foreground mt-2">
-                          {t('settings.noFilters')}
+                          {t('settings.filtersDisabled')}
                         </p>
                       )}
                     </div>
@@ -1736,7 +1740,7 @@ function SettingsContent() {
                         onClick={saveAlertSettings}
                         disabled={savingAlerts}
                       >
-                        {savingAlerts ? t('settings.saving') : t('settings.alertSave')}
+                        {savingAlerts ? t('settings.saving') : t('settings.save')}
                       </Button>
                     </div>
                   )}
