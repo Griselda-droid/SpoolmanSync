@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { SpoolmanClient } from '@/lib/api/spoolman';
+import { formatCommentWithKValue } from '@/lib/k-value';
 
 /**
  * GET /api/filaments
@@ -17,8 +18,18 @@ export async function GET() {
 
     const client = new SpoolmanClient(spoolmanConnection.url);
     const filaments = await client.getFilaments();
+    const spools = await client.getSpools(true);
+    const spoolCounts = new Map<number, number>();
+    for (const spool of spools) {
+      spoolCounts.set(spool.filament.id, (spoolCounts.get(spool.filament.id) || 0) + 1);
+    }
 
-    return NextResponse.json({ filaments });
+    return NextResponse.json({
+      filaments: filaments.map((filament) => ({
+        ...filament,
+        spool_count: spoolCounts.get(filament.id) || 0,
+      })),
+    });
   } catch (error) {
     console.error('Error fetching filaments:', error);
     return NextResponse.json({ error: 'Failed to fetch filaments' }, { status: 500 });
@@ -33,10 +44,13 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, material, vendor, vendor_id, color_hex, density, diameter } = body;
+    const { name, material, vendor, vendor_id, color_hex, density, diameter, k_value } = body;
 
     if (!name || typeof name !== 'string' || !name.trim()) {
       return NextResponse.json({ error: '耗材名称不能为空' }, { status: 400 });
+    }
+    if (k_value !== undefined && (typeof k_value !== 'number' || !Number.isFinite(k_value) || k_value < 0 || k_value > 2)) {
+      return NextResponse.json({ error: 'K 值必须在 0 到 2 之间' }, { status: 400 });
     }
 
     const spoolmanConnection = await prisma.spoolmanConnection.findFirst();
@@ -76,6 +90,7 @@ export async function POST(request: NextRequest) {
       color_hex: color_hex || undefined,
       density: density || undefined,
       diameter: diameter || undefined,
+      comment: formatCommentWithKValue(undefined, k_value),
     });
 
     return NextResponse.json({ filament }, { status: 201 });

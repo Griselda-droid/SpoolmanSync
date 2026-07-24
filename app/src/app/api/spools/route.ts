@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { SpoolmanClient } from '@/lib/api/spoolman';
-import { bambuTrayBrand, bambuTrayFilamentSettings, HomeAssistantClient, type HATray } from '@/lib/api/homeassistant';
+import { bambuFilamentId, bambuTrayBrand, bambuTrayFilamentSettings, HomeAssistantClient, type HATray } from '@/lib/api/homeassistant';
 import { createActivityLog } from '@/lib/activity-log';
 import { makeLocationResolver } from '@/lib/spool-location';
 import { parseKValue } from '@/lib/k-value';
@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
 
     const haClient = await HomeAssistantClient.fromConnection();
     let haTray: HATray | undefined;
+    let haPrinterDeviceId: string | undefined;
     if (haClient) {
       const printer = (await haClient.discoverPrinters()).find((candidate) =>
         candidate.brand === 'bambu_lab' && !candidate.is_virtual && (
@@ -75,6 +76,7 @@ export async function POST(request: NextRequest) {
           candidate.external_spools.some((tray) => tray.unique_id === trayId || tray.entity_id === trayId)
         )
       );
+      haPrinterDeviceId = printer?.device_id || undefined;
       const tray = printer && [
         ...printer.ams_units.flatMap((ams) => ams.trays),
         ...printer.external_spools,
@@ -113,6 +115,26 @@ export async function POST(request: NextRequest) {
             kValue,
           ),
         );
+        try {
+          await haClient.syncBambuTrayKValue(
+            haTray,
+            haPrinterDeviceId,
+            bambuFilamentId(
+              updatedSpool.filament.material,
+              bambuTrayBrand(updatedSpool.filament.vendor?.name),
+              haTray.filament_id,
+              updatedSpool.filament.name,
+              updatedSpool.filament.vendor?.name,
+            ),
+            kValue,
+          );
+        } catch (error) {
+          console.error('[HA Bambu] PA profile sync failed after spool assignment', {
+            spool_id: spoolId,
+            tray_id: trayId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
       }
     }
 

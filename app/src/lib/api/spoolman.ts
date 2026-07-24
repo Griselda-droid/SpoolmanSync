@@ -19,6 +19,8 @@ export interface Filament {
   density: number;
   diameter: number;
   weight?: number;
+  comment?: string;
+  spool_count?: number;
 }
 
 export interface Spool {
@@ -235,6 +237,10 @@ export class SpoolmanClient {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
+  }
+
+  async deleteSpool(id: number): Promise<void> {
+    await this.fetch(`/spool/${id}`, { method: 'DELETE' });
   }
 
   /**
@@ -477,11 +483,16 @@ export class SpoolmanClient {
     color_hex?: string;
     density?: number;
     diameter?: number;
+    comment?: string;
   }): Promise<Filament> {
     return this.fetch('/filament', {
       method: 'POST',
       body: JSON.stringify(data),
     });
+  }
+
+  async deleteFilament(id: number): Promise<void> {
+    await this.fetch(`/filament/${id}`, { method: 'DELETE' });
   }
 
   /**

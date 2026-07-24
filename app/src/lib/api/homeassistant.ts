@@ -34,6 +34,7 @@ export type PrinterBrand = 'bambu_lab' | 'creality' | 'virtual';
 export interface HAPrinter {
   brand: PrinterBrand;
   entity_id: string;
+  device_id?: string | null;
   name: string;
   state: string;
   prefix: string;  // Stable prefix for YAML entity naming (derived from unique_id)
@@ -797,7 +798,7 @@ export class HomeAssistantClient {
    * Send commands over a one-shot WebSocket connection to HA.
    * Opens WS, authenticates, sends all commands, collects results, then closes.
    */
-  private async wsCommand<T>(commands: Array<{ type: string }>): Promise<T[]> {
+  private async wsCommand<T>(commands: Array<Record<string, unknown>>): Promise<T[]> {
     await this.ensureValidToken();
 
     // Build WS URL from base URL
@@ -991,6 +992,7 @@ export class HomeAssistantClient {
               color: trayState?.attributes.color as string,
               material: trayState?.attributes.type as string,
               filament_id: trayState?.attributes.filament_id as string,
+              k_value: trayState?.attributes.k_value as number,
               nozzle_temp_min: trayState?.attributes.nozzle_temp_min as number,
               nozzle_temp_max: trayState?.attributes.nozzle_temp_max as number,
               tray_uuid: trayState?.attributes.tray_uuid as string,
@@ -1018,6 +1020,7 @@ export class HomeAssistantClient {
             color: extState?.attributes.color as string,
             material: extState?.attributes.type as string,
             filament_id: extState?.attributes.filament_id as string,
+            k_value: extState?.attributes.k_value as number,
             nozzle_temp_min: extState?.attributes.nozzle_temp_min as number,
             nozzle_temp_max: extState?.attributes.nozzle_temp_max as number,
             tray_uuid: extState?.attributes.tray_uuid as string,
@@ -1045,6 +1048,7 @@ export class HomeAssistantClient {
       const printer: HAPrinter = {
         brand: 'bambu_lab',
         entity_id: bestPrinterEntity.entity_id,
+        device_id: bestPrinterEntity.device_id || undefined,
         name,
         state: printerState?.state || 'unknown',
         prefix,
@@ -1311,6 +1315,129 @@ export class HomeAssistantClient {
     });
   }
 
+  async getBambuPaProfiles(
+    deviceId: string,
+    filamentId?: string,
+  ): Promise<Array<Record<string, unknown>>> {
+    const [result] = await this.wsCommand<Record<string, unknown>>([{
+      type: 'call_service',
+      domain: 'bambu_lab',
+      service: 'get_pa_profiles',
+      service_data: filamentId
+        ? { device_id: deviceId, filament_id: filamentId }
+        : { device_id: deviceId },
+      return_response: true,
+    }]);
+    const response = result?.response;
+    const profiles = response && typeof response === 'object'
+      ? (response as Record<string, unknown>).profiles
+      : result?.profiles;
+    return Array.isArray(profiles)
+      ? profiles.filter((profile): profile is Record<string, unknown> => Boolean(profile && typeof profile === 'object'))
+      : [];
+  }
+
+  async selectBambuPaProfile(
+    tray: HATray,
+    filamentId: string,
+    caliIdx: number,
+  ): Promise<void> {
+    await this.callService('bambu_lab', 'select_pa_profile', {
+      entity_id: tray.entity_id,
+      cali_idx: caliIdx,
+      // filament_id is required by the printer command to bind the selected
+      // PA profile to the filament currently configured on the tray. It is
+      // not used to match the PA profile itself.
+      filament_id: filamentId,
+    });
+    console.info('[HA Bambu] PA profile selected', {
+      entity_id: tray.entity_id,
+      filament_id: filamentId,
+      cali_idx: caliIdx,
+    });
+  }
+
+  async setBambuPaProfile(
+    deviceId: string,
+    filamentId: string,
+    kValue: number,
+    name: string,
+  ): Promise<void> {
+    await this.callService('bambu_lab', 'set_pa_profile', {
+      device_id: deviceId,
+      filament_id: filamentId,
+      k_value: kValue,
+      name,
+    });
+    console.info('[HA Bambu] PA profile creation requested', {
+      device_id: deviceId,
+      filament_id: filamentId,
+      requested_k_value: kValue,
+    });
+  }
+
+  async syncBambuTrayKValue(
+    tray: HATray,
+    deviceId: string | undefined,
+    filamentId: string | undefined,
+    kValue: number | undefined,
+  ): Promise<boolean> {
+    if (!deviceId || !filamentId || typeof kValue !== 'number' || !Number.isFinite(kValue)) {
+      return false;
+    }
+
+    const profiles = await this.getBambuPaProfiles(deviceId);
+    const matchingProfile = profiles.find((profile) => {
+      const profileKValue = Number(profile.k_value ?? profile.kValue);
+      return Number.isFinite(profileKValue)
+        && Math.abs(profileKValue - kValue) < 0.0005;
+    });
+
+    if (!matchingProfile) {
+      await this.setBambuPaProfile(
+        deviceId,
+        filamentId,
+        kValue,
+        `SpoolmanSync K ${kValue.toFixed(3)}`,
+      );
+
+      // The printer reports the new profile asynchronously. Give it a short
+      // window to publish the updated calibration list before selecting it.
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        const refreshedProfiles = await this.getBambuPaProfiles(deviceId);
+        const refreshedMatch = refreshedProfiles.find((profile) => {
+          const profileKValue = Number(profile.k_value ?? profile.kValue);
+          return Number.isFinite(profileKValue)
+            && Math.abs(profileKValue - kValue) < 0.0005;
+        });
+        if (refreshedMatch) {
+          const refreshedCaliIdx = Number(refreshedMatch.cali_idx);
+          if (Number.isInteger(refreshedCaliIdx)) {
+            await this.selectBambuPaProfile(tray, filamentId, refreshedCaliIdx);
+            return true;
+          }
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+
+      console.warn('[HA Bambu] PA profile was not available after creation', {
+        entity_id: tray.entity_id,
+        filament_id: filamentId,
+        requested_k_value: kValue,
+      });
+      return false;
+    }
+
+    const caliIdx = Number(matchingProfile.cali_idx);
+    if (!Number.isInteger(caliIdx)) {
+      console.warn('[HA Bambu] PA profile has invalid cali_idx', { profile: matchingProfile });
+      return false;
+    }
+
+    await this.selectBambuPaProfile(tray, filamentId, caliIdx);
+    return true;
+  }
+
   /** Update the Bambu/Generic filament profile on an AMS or external tray. */
   async setBambuTrayBrand(
     tray: HATray,
@@ -1335,7 +1462,7 @@ export class HomeAssistantClient {
       filament_id: filamentId,
       tray_type: profile.filament_type,
       k_value: filament.kValue ?? null,
-      k_value_supported_by_service: false,
+      k_value_applied_by_set_filament: false,
     });
     await this.callService('bambu_lab', 'set_filament', {
       entity_id: tray.entity_id,
@@ -1349,7 +1476,7 @@ export class HomeAssistantClient {
       entity_id: tray.entity_id,
       option: brand,
       k_value: filament.kValue ?? null,
-      k_value_applied: false,
+      k_value_applied_by_set_filament: false,
     });
   }
 

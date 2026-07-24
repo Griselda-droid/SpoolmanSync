@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { SpoolColorSwatch } from '@/components/spool-color-swatch';
 import { useI18n } from '@/lib/i18n';
-import { Loader2, Search, ArrowUpDown, ChevronDown, ChevronUp } from 'lucide-react';
+import { Loader2, Search, ChevronDown, ChevronUp, CheckSquare, Trash2 } from 'lucide-react';
 import type { Spool } from '@/lib/api/spoolman';
+import { parseKValue } from '@/lib/k-value';
 
 type SortField = 'registered' | 'name' | 'remaining_weight';
 type SortDir = 'asc' | 'desc';
@@ -25,6 +26,13 @@ export default function SpoolsPage() {
   const [sortField, setSortField] = useState<SortField>('registered');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [selectedSpool, setSelectedSpool] = useState<Spool | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [batchKValue, setBatchKValue] = useState('');
+  const [batchAction, setBatchAction] = useState<'set' | 'clear'>('set');
+  const [syncPrinter, setSyncPrinter] = useState(true);
+  const [savingKValue, setSavingKValue] = useState(false);
+  const [deletingSpools, setDeletingSpools] = useState(false);
+  const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSpools();
@@ -51,6 +59,91 @@ export default function SpoolsPage() {
     } else {
       setSortField(field);
       setSortDir('desc');
+    }
+  };
+
+  const toggleSpool = (spoolId: number) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(spoolId)) next.delete(spoolId);
+      else next.add(spoolId);
+      return next;
+    });
+  };
+
+  const toggleAllVisible = () => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      const allSelected = filteredAndSorted.length > 0 && filteredAndSorted.every((spool) => next.has(spool.id));
+      filteredAndSorted.forEach((spool) => {
+        if (allSelected) next.delete(spool.id);
+        else next.add(spool.id);
+      });
+      return next;
+    });
+  };
+
+  const saveBatchKValue = async () => {
+    if (selectedIds.size === 0) return;
+    const trimmed = batchKValue.trim();
+    const kValue = batchAction === 'clear' ? null : trimmed === '' ? null : Number(trimmed);
+    if (batchAction === 'set' && trimmed === '') {
+      setSaveMessage(t('spools.kValueRequired'));
+      return;
+    }
+    if (kValue !== null && (!Number.isFinite(kValue) || kValue < 0 || kValue > 2)) {
+      setSaveMessage(t('spools.kValueInvalid'));
+      return;
+    }
+
+    setSavingKValue(true);
+    setSaveMessage(null);
+    try {
+      const response = await fetch('/api/spools/k-value', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          updates: Array.from(selectedIds).map((spoolId) => ({ spoolId, kValue })),
+          syncPrinter: syncPrinter && batchAction === 'set',
+        }),
+      });
+      if (!response.ok) throw new Error('Failed to update K values');
+      await fetchSpools();
+      setSelectedIds(new Set());
+      setBatchKValue('');
+      setSaveMessage(t(batchAction === 'clear' ? 'spools.kValueCleared' : 'spools.kValueSaved'));
+    } catch {
+      setSaveMessage(t('spools.kValueSaveFailed'));
+    } finally {
+      setSavingKValue(false);
+    }
+  };
+
+  const deleteSelectedSpools = async () => {
+    if (selectedIds.size === 0 || deletingSpools) return;
+    if (!window.confirm(t('spools.deleteConfirm').replace('{count}', String(selectedIds.size)))) return;
+
+    setDeletingSpools(true);
+    setSaveMessage(null);
+    try {
+      for (const spoolId of selectedIds) {
+        const response = await fetch('/api/spools/delete', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ spoolId }),
+        });
+        if (!response.ok) throw new Error(`Failed to delete spool #${spoolId}`);
+      }
+      await fetchSpools();
+      setSelectedIds(new Set());
+      setSelectedSpool(null);
+      setBatchAction('set');
+      setBatchKValue('');
+      setSaveMessage(t('spools.deleteSaved'));
+    } catch {
+      setSaveMessage(t('spools.deleteFailed'));
+    } finally {
+      setDeletingSpools(false);
     }
   };
 
@@ -191,6 +284,53 @@ export default function SpoolsPage() {
           ))}
         </div>
 
+        <div className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
+          <Button variant="outline" size="sm" onClick={toggleAllVisible} disabled={filteredAndSorted.length === 0}>
+            <CheckSquare className="mr-2 h-4 w-4" />
+            {t('spools.selectVisible')} ({selectedIds.size}/{filteredAndSorted.length})
+          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={batchAction}
+              onChange={(event) => setBatchAction(event.target.value as 'set' | 'clear')}
+              disabled={selectedIds.size === 0 || savingKValue}
+              className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+            >
+              <option value="set">{t('spools.kValueSetAction')}</option>
+              <option value="clear">{t('spools.kValueClearAction')}</option>
+            </select>
+            <Input
+              type="number"
+              min="0"
+              max="2"
+              step="0.001"
+              placeholder={batchAction === 'clear' ? t('spools.kValueClearPlaceholder') : t('spools.kValueBatchPlaceholder')}
+              value={batchKValue}
+              onChange={(event) => setBatchKValue(event.target.value)}
+              disabled={savingKValue || batchAction === 'clear'}
+              className="w-44"
+            />
+            <label className="flex items-center gap-1 text-xs text-muted-foreground">
+              <input type="checkbox" checked={syncPrinter} onChange={(event) => setSyncPrinter(event.target.checked)} disabled={batchAction === 'clear' || savingKValue} />
+              {t('spools.syncPrinter')}
+            </label>
+            <Button onClick={saveBatchKValue} disabled={selectedIds.size === 0 || savingKValue} size="sm">
+              {savingKValue && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {t('spools.saveKValue')}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={deleteSelectedSpools}
+              disabled={selectedIds.size === 0 || savingKValue || deletingSpools}
+              size="sm"
+            >
+              {deletingSpools ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              {t('spools.deleteSelected')}
+            </Button>
+            {saveMessage && <span className="text-xs text-muted-foreground">{saveMessage}</span>}
+          </div>
+        </div>
+
         {/* Spool list */}
         {error ? (
           <div className="text-center py-10 text-destructive">{error}</div>
@@ -208,6 +348,14 @@ export default function SpoolsPage() {
               >
                 <CardContent className="p-3">
                   <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      aria-label={`${t('spools.selectSpool')} #${spool.id}`}
+                      checked={selectedIds.has(spool.id)}
+                      onChange={() => toggleSpool(spool.id)}
+                      onClick={(event) => event.stopPropagation()}
+                      className="h-4 w-4 shrink-0"
+                    />
                     <SpoolColorSwatch filament={spool.filament} size="h-8 w-8" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -224,6 +372,7 @@ export default function SpoolsPage() {
                       <div className="text-xs text-muted-foreground">
                         {spool.filament?.material && `${spool.filament.material} · `}
                         {t('spools.remaining')}: {Math.round(spool.remaining_weight || 0)}g
+                        {` · ${t('spools.kValue')}: ${parseKValue(spool.comment)?.toFixed(3) ?? '-'}`}
                         {spool.location && ` · ${spool.location}`}
                       </div>
                     </div>

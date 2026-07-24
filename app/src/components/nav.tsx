@@ -20,6 +20,7 @@ export function Nav() {
   const navItems = [
     { href: '/', label: t('nav.dashboard') },
     { href: '/spools', label: t('nav.spools') },
+    { href: '/filaments', label: t('nav.filaments') },
     { href: '/scan', label: t('nav.scan') },
     { href: '/reports', label: t('nav.reports') },
     { href: '/automations', label: t('nav.automations') },

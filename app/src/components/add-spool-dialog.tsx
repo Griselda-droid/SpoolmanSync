@@ -24,6 +24,7 @@ import { SpoolColorSwatch } from '@/components/spool-color-swatch';
 import { toast } from 'sonner';
 import { Loader2, Plus, Check, Palette } from 'lucide-react';
 import type { Filament } from '@/lib/api/spoolman';
+import { parseKValue } from '@/lib/k-value';
 
 interface FilamentProfile {
   name: string;
@@ -33,6 +34,7 @@ interface FilamentProfile {
   nozzle_temperature: number;
   nozzle_temperature_range_high: number;
   nozzle_temperature_range_low: number;
+  k_value?: number;
 }
 
 // Preset common 3D printing filament colors
@@ -93,6 +95,7 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
   const [newFilamentColor, setNewFilamentColor] = useState('');
   const [newFilamentDensity, setNewFilamentDensity] = useState('1.24');
   const [newFilamentDiameter, setNewFilamentDiameter] = useState('1.75');
+  const [newFilamentKValue, setNewFilamentKValue] = useState('');
   const [creatingFilament, setCreatingFilament] = useState(false);
   const [filamentProfiles, setFilamentProfiles] = useState<Record<string, FilamentProfile>>({});
   const [filamentProfilesLoading, setFilamentProfilesLoading] = useState(false);
@@ -184,6 +187,7 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
     setNewFilamentColor('');
     setNewFilamentDensity('1.24');
     setNewFilamentDiameter('1.75');
+    setNewFilamentKValue('');
     setSelectedProfileId('');
   }, []);
 
@@ -198,6 +202,7 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
     setNewFilamentMaterial(profileName || profile.filament_type);
     setNewFilamentVendor(profile.filament_vendor);
     setNewFilamentDensity(String(profile.filament_density));
+    setNewFilamentKValue(profile.k_value === undefined ? '' : String(profile.k_value));
   };
 
   // Create a new filament in Spoolman
@@ -219,6 +224,7 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
           color_hex: newFilamentColor || undefined,
           density: newFilamentDensity ? parseFloat(newFilamentDensity) : undefined,
           diameter: newFilamentDiameter ? parseFloat(newFilamentDiameter) : undefined,
+          k_value: newFilamentKValue.trim() ? Number(newFilamentKValue) : undefined,
         }),
       });
 
@@ -280,6 +286,8 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
 
   const handleFilamentSelect = (filament: Filament) => {
     setSelectedFilament(filament);
+    const configuredKValue = parseKValue(filament.comment);
+    setKValue(configuredKValue === undefined ? '' : String(configuredKValue));
     setStep('details');
   };
 
@@ -485,6 +493,11 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
                   value={kValue}
                   onChange={(e) => setKValue(e.target.value)}
                 />
+                <p className="text-xs text-muted-foreground">
+                  {parseKValue(selectedFilament?.comment) !== undefined
+                    ? `耗材配置默认值：${parseKValue(selectedFilament.comment)}`
+                    : '未配置耗材默认 K 值，可在此料盘中单独设置'}
+                </p>
               </div>
             </div>
 
@@ -729,6 +742,19 @@ export function AddSpoolDialog({ open, onOpenChange, onSuccess }: AddSpoolDialog
                   placeholder="1.75"
                   value={newFilamentDiameter}
                   onChange={(e) => setNewFilamentDiameter(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="filamentKValue">K 值</Label>
+                <Input
+                  id="filamentKValue"
+                  type="number"
+                  step="0.001"
+                  min="0"
+                  max="2"
+                  placeholder="例如 0.032"
+                  value={newFilamentKValue}
+                  onChange={(e) => setNewFilamentKValue(e.target.value)}
                 />
               </div>
             </div>
